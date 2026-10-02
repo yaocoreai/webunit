@@ -1,0 +1,20 @@
+---
+import { useSection } from '@/platform/theme';
+import type { HomeCompareSection } from '@/platform/theme';
+import { siteLocale } from '@/theme/path';
+
+const { locale: requested, settings } = useSection<HomeCompareSection>(Astro);
+const locale = siteLocale(requested);
+const home = settings;
+---
+<section class="bg-tile text-white">
+  <div class="mx-auto max-w-[820px] px-6 py-24 text-center">
+    <h2 class="font-display text-[40px] font-semibold leading-[1.1]">{home.compareTitle}</h2>
+    <p class="mt-6 text-[17px] leading-[1.47] text-white/80">{home.compareBody}</p>
+    <p class="mt-4 text-[17px] leading-[1.47] text-white/80">{home.compareBody2}</p>
+    <div class="mt-14 grid gap-10 min-[834px]:grid-cols-2">
+      <p class="text-[28px] font-semibold leading-[1.14] text-white/50">{home.before}</p>
+      <p class="text-[28px] font-semibold leading-[1.14]">{home.now}</p>
+    </div>
+  </div>
+</section>

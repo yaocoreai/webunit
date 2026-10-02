@@ -1,0 +1,44 @@
+---
+import type { DocumentRenderPayload } from '@/platform/theme/render/model';
+import { readRenderRuntime } from '@/platform/theme/render/context';
+import { resolveSeo } from './seo';
+
+const { payload } = Astro.props as { payload: DocumentRenderPayload };
+const seo = resolveSeo(payload.seo);
+const renderRuntime = readRenderRuntime(Astro.locals);
+const themePreview = renderRuntime !== undefined && renderRuntime.context.environment !== 'production';
+const errorDocument = 'error' in payload;
+const robots = themePreview || errorDocument ? [{ name: 'robots', content: 'noindex,nofollow' }] : seo.robots;
+const publishDocumentLinks = !themePreview && !errorDocument;
+const meta = errorDocument ? seo.meta.filter((item) => item.name.toLowerCase() !== 'robots') : seo.meta;
+const links = errorDocument ? seo.links.filter((item) => !['canonical', 'alternate', 'manifest'].includes(item.rel.toLowerCase())) : seo.links;
+const openGraphMap = seo.openGraph ?? {};
+const imageValues = Array.isArray(openGraphMap.image) ? openGraphMap.image : openGraphMap.image ? [openGraphMap.image] : [];
+const imagePropertyNames = ['image:secure_url', 'image:type', 'image:width', 'image:height', 'image:alt'] as const;
+const openGraph = Object.entries(openGraphMap).flatMap(([name, value]) => {
+  if ((themePreview || errorDocument) && name === 'url') return [];
+  if (name === 'image' || imagePropertyNames.includes(name as typeof imagePropertyNames[number])) return [];
+  return (Array.isArray(value) ? value : [value]).map((content) => ({ name, content }));
+}).concat(imageValues.flatMap((content, index) => [
+  { name: 'image', content },
+  ...imagePropertyNames.flatMap((name) => {
+    const value = openGraphMap[name];
+    const item = Array.isArray(value) ? value[index] : index === 0 ? value : undefined;
+    return item ? [{ name, content: item }] : [];
+  }),
+]));
+const twitter = Object.entries(seo.twitter ?? {}).map(([name, content]) => ({ name, content }));
+---
+<title>{seo.title || String(payload.site.fields.title ?? '')}</title>
+{seo.description && <meta name="description" content={seo.description} />}
+{robots.map((item) => <meta name={item.name} content={item.content} />)}
+{meta.map((item) => <meta name={item.name} content={item.content} />)}
+{publishDocumentLinks && seo.canonical && <link rel="canonical" href={seo.canonical} />}
+{publishDocumentLinks && <link rel="manifest" href="/manifest.webmanifest" />}
+{publishDocumentLinks && <meta name="msapplication-config" content="/browserconfig.xml" />}
+{seo.icons.map((icon) => <link rel={icon.rel} href={icon.href} type={icon.contentType} sizes={icon.sizes} color={icon.color} />)}
+{links.map((link) => <link rel={link.rel} href={link.href} type={link.type} title={link.title} media={link.media} />)}
+{publishDocumentLinks && seo.alternates.map((alternate) => <link rel="alternate" hreflang={alternate.hreflang} href={alternate.href} />)}
+{openGraph.map((item) => <meta property={`og:${item.name}`} content={item.content} />)}
+{twitter.map((item) => <meta name={`twitter:${item.name}`} content={item.content} />)}
+{publishDocumentLinks && seo.jsonLdText.map((value) => <script type="application/ld+json" is:inline set:html={value} />)}

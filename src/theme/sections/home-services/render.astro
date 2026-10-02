@@ -1,0 +1,21 @@
+---
+import { useSection } from '@/platform/theme';
+import type { HomeServicesSection } from '@/platform/theme';
+import { href, siteLocale } from '@/theme/path';
+import Link from '@/theme/partials/link/render.astro';
+
+const { locale: requested, settings } = useSection<HomeServicesSection>(Astro);
+const locale = siteLocale(requested);
+const home = settings;
+---
+<section class="bg-parchment">
+  <div class="mx-auto max-w-[1100px] px-6 py-20">
+    <h2 class="text-center font-display text-[40px] font-semibold leading-[1.1]">{home.servicesTitle}</h2>
+    <p class="mt-3 text-center text-[17px] text-muted">{home.servicesNote}</p>
+    <ul class="mt-10 grid gap-3 min-[834px]:grid-cols-3">
+      {home.services.map((item) => <li class="rounded-[18px] border border-hairline bg-white px-4 py-12 text-center text-[21px] font-semibold tracking-[0.231px]">{item.text}</li>)}
+    </ul>
+    <p class="mx-auto mt-10 max-w-xl text-center text-[17px] leading-[1.47]">{home.agentLine}</p>
+    <p class="mt-4 text-center"><Link class="text-primary" href={href(locale, home.agentLink.href)}>{home.agentLink.label}</Link></p>
+  </div>
+</section>

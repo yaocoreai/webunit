@@ -1,0 +1,31 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import type { CmsAsset } from './content/public';
+import { isTrustedCmsAssetEmbedUrl } from './content/url';
+
+type Props = Omit<HTMLAttributes<'audio'>, 'src'> & {
+  asset?: CmsAsset<'audio'> | null;
+  label: string;
+  transcriptHref?: string;
+  transcriptLabel?: string;
+  controls?: boolean;
+};
+const { asset, label, transcriptHref, transcriptLabel = 'Transcript', controls = true, ...attributes } = Astro.props;
+const audioSource = asset?.delivery.type === 'file' ? asset.delivery.url : '';
+const audioProviders = {
+  spotify: { allow: 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture' },
+  soundcloud: { allow: 'autoplay' },
+} as const;
+const embed = (() => {
+  if (asset?.delivery.type !== 'embed') return null;
+  const provider = audioProviders[asset.delivery.provider as keyof typeof audioProviders];
+  if (!provider || !isTrustedCmsAssetEmbedUrl(asset.delivery.provider, asset.delivery.url)) return null;
+  return { src: new URL(asset.delivery.url).href, allow: provider.allow };
+})();
+const audioLabel = label.trim();
+const transcriptUrl = typeof transcriptHref === 'string' ? transcriptHref.trim() : '';
+const transcriptText = transcriptLabel.trim() || `${audioLabel} transcript`;
+const canRender = Boolean(audioSource && audioLabel);
+---
+{canRender ? <audio src={audioSource} controls={controls} aria-label={audioLabel} {...attributes}><slot /></audio> : embed && audioLabel ? <iframe src={embed.src} title={audioLabel} loading="lazy" allow={embed.allow} referrerpolicy="strict-origin-when-cross-origin"></iframe> : <span><slot /></span>}
+{canRender && transcriptUrl && <a href={transcriptUrl} aria-label={`${audioLabel}: ${transcriptText}`}>{transcriptText}</a>}

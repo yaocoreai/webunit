@@ -1,0 +1,57 @@
+{
+  "name": "@webunit/site",
+  "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "predev": "PLATFORM_RENDERER=theme pnpm generate:registry",
+    "dev": "node scripts/dev.mjs datas",
+    "dev:function": "PLATFORM_RENDERER=theme node scripts/dev.mjs local",
+    "dev:cloudflare": "PLATFORM_RENDERER=theme node scripts/dev.mjs cloudflare",
+    "prebuild": "PLATFORM_RENDERER=theme pnpm generate:registry",
+    "build": "NODE_ENV=production node scripts/build.mjs node",
+    "build:cloudflare": "PLATFORM_ENV=cloudflare NODE_ENV=production WRANGLER_LOG_PATH=.wrangler/logs WRANGLER_REGISTRY_PATH=.wrangler/registry MINIFLARE_REGISTRY_PATH=.wrangler/registry node scripts/build.mjs cloudflare",
+    "start:function": "PLATFORM_RENDERER=theme node scripts/start-node.mjs",
+    "generate:registry": "PLATFORM_RENDERER=theme node scripts/generate-registry.mjs && node --import tsx scripts/generate-function-api.mts",
+    "db:migrate": "node scripts/db/command.mjs migrate node",
+    "db:status": "node scripts/db/command.mjs status node",
+    "db:doctor": "node scripts/db/command.mjs doctor node",
+    "lint": "eslint scripts src"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^13.7.0",
+    "@astrojs/node": "^10.1.0",
+    "@aws-sdk/client-s3": "3.1116.0",
+    "@aws-sdk/s3-request-presigner": "3.1116.0",
+    "astro": "^6.3.1",
+    "better-sqlite3": "^12.11.1",
+    "bullmq": "6.1.0",
+    "ioredis": "5.11.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@eslint/js": "^9.39.2",
+    "@tailwindcss/vite": "^4.3.2",
+    "@types/better-sqlite3": "^7.6.13",
+    "eslint": "^9",
+    "eslint-plugin-astro": "^1.7.0",
+    "globals": "^16.5.0",
+    "tailwindcss": "^4.3.0",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.52.0",
+    "vite": "^7.3.6",
+    "wrangler": "^4.106.0"
+  },
+  "optionalDependencies": {
+    "@maxmind/geoip2-node": "6.3.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
+  }
+}

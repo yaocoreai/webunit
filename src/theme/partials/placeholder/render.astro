@@ -1,0 +1,25 @@
+---
+const { label, caption = "占位图", size = "band", className = "" } = Astro.props as {
+  label: string;
+  caption?: string;
+  size?: "hero" | "band" | "row";
+  className?: string;
+};
+---
+{size === "hero" ? (
+  <div role="img" aria-label={label} class:list={["flex min-h-[28rem] flex-col items-center justify-center bg-tile px-6 py-20 text-center", className]}>
+    <p class="font-display max-w-[16ch] text-[32px] font-semibold leading-[1.1] text-white min-[834px]:text-[40px]">{label}</p>
+    <p class="mt-4 text-[12px] tracking-[-0.12px] text-fog">{caption}</p>
+  </div>
+) : size === "row" ? (
+  <div role="img" aria-label={label} class:list={["flex min-h-28 flex-col justify-end bg-tile px-4 py-4", className]}>
+    <p class="text-[14px] font-semibold text-white">{label}</p>
+  </div>
+) : (
+  <div role="img" aria-label={label} class:list={["flex min-h-64 flex-col justify-between bg-tile px-6 py-6", className]}>
+    <div>
+      <p class="font-display text-[21px] font-semibold leading-[1.19] text-white">{label}</p>
+      <p class="mt-2 text-[12px] tracking-[-0.12px] text-fog">{caption}</p>
+    </div>
+  </div>
+)}

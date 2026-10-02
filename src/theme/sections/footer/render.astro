@@ -1,0 +1,13 @@
+---
+import { useSection } from '@/platform/theme';
+import type { FooterSection } from '@/platform/theme';
+
+const { settings } = useSection<FooterSection>(Astro);
+const year = new Date().getFullYear();
+---
+<footer class="bg-parchment">
+  <div class="mx-auto grid max-w-[980px] gap-6 px-6 py-16 text-[12px] leading-[1.47] text-ink/80 min-[834px]:grid-cols-[1.4fr_1fr]">
+    <p>{settings.studio}<br />{settings.contact}</p>
+    <p class="min-[834px]:text-right">© {year} {settings.wordmark}</p>
+  </div>
+</footer>

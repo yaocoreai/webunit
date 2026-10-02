@@ -1,0 +1,13 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import type { CmsLink } from './content/public';
+import { formatLink } from './render/link';
+
+type Props = HTMLAttributes<'a'> & Readonly<{ link?: CmsLink }>;
+const { link, href: explicitHref, target: explicitTarget, rel: explicitRel, ...attributes } = Astro.props;
+const href = explicitHref ?? link?.href;
+const target = explicitTarget ?? link?.target;
+const rel = explicitRel ?? (target === '_blank' ? 'noopener noreferrer' : undefined);
+const resolvedHref = href ? formatLink(String(href), Astro.url.pathname, Astro.url.host) : undefined;
+---
+{resolvedHref ? <a href={resolvedHref} target={target} rel={rel} {...attributes}><slot /></a> : <span {...attributes}><slot /></span>}

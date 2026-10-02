@@ -1,0 +1,11 @@
+---
+import { useSection } from '@/platform/theme';
+import type { PolicyBodySection } from '@/platform/theme';
+
+const { settings } = useSection<PolicyBodySection>(Astro);
+---
+<article class="mx-auto max-w-[680px] px-6 pb-20 pt-20 min-[834px]:pt-24">
+  <h1 class="font-display text-[40px] font-semibold leading-[1.07] tracking-[-0.28px] min-[1069px]:text-[56px]">{settings.h1}</h1>
+  <p class="mt-5 text-[21px] font-normal leading-[1.29]">{settings.lead}</p>
+  {settings.paragraphs.map((item) => <p class="mt-4 text-[17px] leading-[1.47]">{item.text}</p>)}
+</article>

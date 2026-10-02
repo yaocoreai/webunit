@@ -1,0 +1,18 @@
+---
+import { useTemplate } from '@/platform/theme';
+import type { Error } from '@/platform/theme';
+import { href, siteLocale } from '@/theme/path';
+import Link from '@/theme/partials/link/render.astro';
+
+const context = useTemplate<Error>(Astro);
+const locale = siteLocale(context.locale);
+const error = 'error' in context ? context.error : undefined;
+const missing = !error || error.status === 404;
+---
+<section class="mx-auto max-w-[680px] px-6 py-24">
+  {context.settings.showStatus && error && <p class="text-[12px] tracking-[-0.12px] text-muted">{error.status}</p>}
+  <h1 class="font-display mt-3 text-[40px] font-semibold leading-[1.07] tracking-[-0.28px]">{missing ? context.settings.notFoundTitle : context.message(`code.${error?.status}`) || context.message('code.default')}</h1>
+  <p class="mt-4">{missing ? context.settings.notFoundBody : context.settings.description}</p>
+  <p class="mt-6"><Link class="text-primary" href={href(locale, context.settings.homeHref)}>{context.settings.homeLabel}</Link></p>
+  {error?.requestId && <p class="mt-8 text-[12px] text-muted">{context.message('requestId')}: <code class="break-words">{error.requestId}</code></p>}
+</section>

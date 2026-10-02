@@ -1,0 +1,8 @@
+---
+import type { ComponentProps } from 'astro/types';
+import PlatformLink from '@/platform/theme/link.astro';
+
+type Props = ComponentProps<typeof PlatformLink>;
+const props = Astro.props;
+---
+<PlatformLink {...props}><slot /></PlatformLink>

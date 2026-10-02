@@ -1,0 +1,59 @@
+---
+import { useSection } from '@/platform/theme';
+import type { HeaderSection } from '@/platform/theme';
+import { contentPath, href, siteLocale } from '@/theme/path';
+import Image from '@/theme/partials/image/render.astro';
+import Link from '@/theme/partials/link/render.astro';
+
+const { locale: requested, settings, site } = useSection<HeaderSection>(Astro);
+const locale = siteLocale(requested);
+const other = locale === 'zh' ? 'en' : 'zh';
+const path = contentPath(Astro.url.pathname);
+---
+<header class="sticky top-0 z-40">
+  <div class="bg-black text-white">
+    <div class="mx-auto flex h-11 max-w-[1200px] items-center justify-between px-6">
+      <Link href={href(locale, '/')} class="flex items-center gap-2 text-[14px] text-white no-underline">
+        <Image asset={site.fields.logo_white} alt={settings.logoAlt} width={32} height={28} />
+        <span>{settings.wordmark}</span>
+        <span class="text-white/50">{settings.studio}</span>
+      </Link>
+      <div class="flex items-center gap-5">
+        <a href={href(other, path)} class="text-[12px] text-white/80 no-underline hover:text-white">{settings.langLabel}</a>
+        <details class="site-nav group min-[834px]:hidden">
+          <summary class="flex size-11 cursor-pointer list-none items-center justify-center text-white">
+            <span class="sr-only">{settings.menu}</span>
+            <svg class="group-open:hidden" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <path d="M2.5 4.5h13M2.5 9h13M2.5 13.5h13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+            <svg class="hidden group-open:block" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+          </summary>
+          <div class="fixed inset-x-0 top-11 bottom-0 z-50 overflow-y-auto bg-black">
+            <nav class="mx-auto flex max-w-[1200px] flex-col px-6 py-2" aria-label={settings.navLabel}>
+              {settings.nav.map((item) => (
+                <Link
+                  href={href(locale, item.href)}
+                  aria-current={contentPath(item.href) === path ? 'page' : undefined}
+                  class="border-b border-white/10 py-4 font-display text-[21px] font-semibold leading-[1.19] tracking-[0.231px] text-white/70 no-underline aria-[current=page]:text-white"
+                >{item.label}</Link>
+              ))}
+            </nav>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+  <nav class="hidden border-b border-black/10 bg-white/80 backdrop-blur-xl min-[834px]:block" aria-label={settings.navLabel}>
+    <div class="mx-auto flex h-[52px] max-w-[1200px] items-center justify-center gap-7 px-6">
+      {settings.nav.map((item) => (
+        <Link
+          href={href(locale, item.href)}
+          aria-current={contentPath(item.href) === path ? 'page' : undefined}
+          class="text-[12px] text-muted no-underline hover:text-ink aria-[current=page]:text-ink"
+        >{item.label}</Link>
+      ))}
+    </div>
+  </nav>
+</header>

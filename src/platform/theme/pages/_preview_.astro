@@ -1,0 +1,107 @@
+---
+import {
+  bindPreviewRuntime,
+  prepareDefaultPreview,
+  preparePreviewUpdate,
+} from '@/platform/theme/preview/render';
+import type { SlotPreviewRuntime } from '@/platform/theme/preview/slot-preview';
+import { parsePreviewRequest } from '@/platform/theme/preview/target';
+import { readAdminConfig } from '@/platform/runtime/runtime-config';
+import RenderPage from '@/platform/theme/render/page.astro';
+import RenderSection from '@/platform/theme/render/section.astro';
+import SlotPreviewDocument from '@/platform/theme/render/slot-preview-document.astro';
+import Layout from '@/theme/layout/render.astro';
+import PreviewBridge from '@/platform/theme/preview/bridge.astro';
+import theme from '@/manifest';
+import { resolveViewportWidth } from '@/platform/manifest';
+import { useWebEditorTicketVerifier, verifyWebEditorTicket } from '@/platform/theme/installation/ticket';
+import { createPreviewHeaders } from '@/platform/theme/preview/response';
+import { bindThemePreviewEnvironment, createThemePreviewEnvironment } from '@/platform/theme/preview/environment';
+
+const { readPlatformEnvironment, resolveServerEnvironment } = await import(
+  '@/platform/runtime/server-environment'
+);
+const environment = await resolveServerEnvironment(readPlatformEnvironment(Astro.locals));
+const editorOrigin = readAdminConfig(environment).origin;
+const previewSecurityHeaders = createPreviewHeaders(editorOrigin);
+
+if (Astro.request.method !== 'GET' && Astro.request.method !== 'POST') {
+  const headers = new Headers(previewSecurityHeaders); headers.set('allow', 'GET, POST');
+  return new Response('Method not allowed', { status: 405, headers });
+}
+if (!await verifyWebEditorTicket(Astro.request, 'preview', useWebEditorTicketVerifier(Astro.locals))) {
+  return new Response('Unauthorized', { status: 401, headers: previewSecurityHeaders });
+}
+const parsed = parsePreviewRequest(Astro.url);
+if ('error' in parsed) return new Response(parsed.error, { status: 400, headers: previewSecurityHeaders });
+const [{ sectionRenders, templateRenders }, { templateSlotPreviews }] = await Promise.all([
+  import('@/platform/generated/theme/render-runtime'),
+  import('@/platform/generated/theme/preview-runtime'),
+]);
+const { target, presentation } = parsed.value;
+if (target.type === 'template' && !templateRenders[target.key as keyof typeof templateRenders]) return new Response('Template not found', { status: 404, headers: previewSecurityHeaders });
+if (target.type === 'section' && !sectionRenders[target.key as keyof typeof sectionRenders]) return new Response('Section not found', { status: 404, headers: previewSecurityHeaders });
+const slotPresentation = target.type === 'template' && presentation.content === 'slots'
+  ? presentation
+  : undefined;
+type SlotPreviewComponent = Awaited<ReturnType<(typeof templateSlotPreviews)[keyof typeof templateSlotPreviews]>>['default'];
+let SlotPreview: SlotPreviewComponent | undefined;
+let slotPreviewRuntime: SlotPreviewRuntime | undefined;
+let prepared: Awaited<ReturnType<typeof prepareDefaultPreview>>;
+if (slotPresentation) {
+  if (Astro.request.method !== 'GET') return new Response('Method not allowed', { status: 405, headers: previewSecurityHeaders });
+  const { prepareSlotPreviewRuntime } = await import(
+    '@/platform/theme/preview/slot-preview'
+  );
+  const loader = templateSlotPreviews[target.key as keyof typeof templateSlotPreviews];
+  if (!loader) return new Response('Template slot preview not found', { status: 404, headers: previewSecurityHeaders });
+  slotPreviewRuntime = await prepareSlotPreviewRuntime(
+    target.key,
+    slotPresentation.viewport,
+    slotPresentation.activeSlot,
+    resolveViewportWidth(theme.viewport, slotPresentation.environment.viewportWidth),
+  );
+  if (!slotPreviewRuntime) return new Response('Preview slot not found', { status: 404, headers: previewSecurityHeaders });
+  SlotPreview = (await loader()).default;
+} else {
+  const result = Astro.request.method === 'POST'
+    ? await preparePreviewUpdate(Astro.request, target)
+    : await prepareDefaultPreview(parsed.value);
+  if (result instanceof Response) {
+    const headers = new Headers(result.headers);
+    previewSecurityHeaders.forEach((value, key) => headers.set(key, value));
+    return new Response(result.body, { status: result.status, statusText: result.statusText, headers });
+  }
+  if (!result) return new Response('Preview not found', { status: 404, headers: previewSecurityHeaders });
+  prepared = result;
+  bindPreviewRuntime(Astro.locals, Astro.request, prepared, environment);
+}
+
+for (const [name, value] of previewSecurityHeaders) Astro.response.headers.set(name, value);
+const previewEnvironment = createThemePreviewEnvironment(parsed.value, theme.viewport, prepared?.revision ?? 0, {
+  enabled: true,
+  ...(slotPresentation?.activeSlot ? { selectedSlot: slotPresentation.activeSlot } : {}),
+  ...(prepared?.context.preview.type === 'template' && prepared.context.preview.activeSection ? { selectedSection: prepared.context.preview.activeSection } : {}),
+});
+bindThemePreviewEnvironment(Astro.locals, previewEnvironment);
+const bridgeProps = { editorOrigin, target, themePackage: theme.package, revision: prepared?.revision ?? 0, previewEnvironment };
+const templatePreviewPayload = !slotPresentation && target.type === 'template' ? prepared?.payload : undefined;
+const sectionPreview = !slotPresentation && target.type === 'section' && prepared?.section
+  ? { payload: prepared.payload, section: prepared.section }
+  : undefined;
+---
+{slotPresentation && SlotPreview && slotPreviewRuntime ? (
+  <SlotPreviewDocument viewport={slotPresentation.viewport}>
+    <SlotPreview runtime={slotPreviewRuntime} />
+    <PreviewBridge {...bridgeProps} acceptUpdates={false} />
+  </SlotPreviewDocument>
+) : templatePreviewPayload ? (
+  <RenderPage value={templatePreviewPayload}>
+    <PreviewBridge slot="document-end" {...bridgeProps} />
+  </RenderPage>
+) : sectionPreview ? (
+  <Layout payload={sectionPreview.payload}>
+    <RenderSection slot="section" value={sectionPreview.section} payload={sectionPreview.payload} />
+    <PreviewBridge slot="document-end" {...bridgeProps} />
+  </Layout>
+) : null}

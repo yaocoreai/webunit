@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "webunit-site-cloudflare",
+  "main": "./src/platform/runtime/workers/entry.ts",
+  "compatibility_date": "2026-08-27",
+  "workers_dev": true,
+  "cache": { "enabled": true },
+  "d1_databases": [{ "binding": "DB", "remote": true }],
+  "r2_buckets": [{ "binding": "STORAGE", "remote": true }],
+  "kv_namespaces": [
+    { "binding": "FUNCTION_CACHE", "remote": true },
+    { "binding": "WEB_CACHE", "remote": true },
+    { "binding": "SESSION", "remote": true }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "RATE_LIMIT", "class_name": "WebunitRateLimitDurableObject" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["WebunitRateLimitDurableObject"] }]
+}

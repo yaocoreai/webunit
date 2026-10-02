@@ -1,0 +1,67 @@
+---
+import { serializeJsonForHtml, useSection } from '@/platform/theme';
+import type { PriceBodySection } from '@/platform/theme';
+import { href, siteLocale } from '@/theme/path';
+import Link from '@/theme/partials/link/render.astro';
+
+const { locale: requested, settings: price } = useSection<PriceBodySection>(Astro);
+const locale = siteLocale(requested);
+---
+<article>
+  <header class="mx-auto max-w-[980px] px-6 pb-4 pt-20 text-center min-[834px]:pt-24">
+    <p class="text-[12px] tracking-[-0.12px] text-muted">{price.studio}</p>
+    <h1 class="font-display mt-3 text-[40px] font-semibold leading-[1.07] tracking-[-0.28px] min-[1069px]:text-[56px]">{price.h1}</h1>
+    <p class="mx-auto mt-5 max-w-xl text-[21px] font-normal leading-[1.29]">{price.lead}</p>
+  </header>
+  <div class="mx-auto max-w-[1200px] px-6 py-12">
+    <table class="w-full table-fixed border-collapse text-left">
+      <caption class="sr-only">{price.h1}</caption>
+      <thead>
+        <tr class="border-b border-ink text-[12px] tracking-[-0.12px] text-muted">
+          <th scope="col" class="py-3 pr-4 font-normal">{price.columns.client}</th>
+          <th scope="col" class="py-3 pr-4 font-normal">{price.columns.day}</th>
+          <th scope="col" class="py-3 font-normal">{price.columns.month}</th>
+        </tr>
+      </thead>
+      <tbody class="tabular-nums">
+        {price.rows.map((row, index) => (
+          <tr class={index === 0 ? 'border-b border-hairline' : undefined}>
+            <th scope="row" class="py-6 pr-4 text-left text-[21px] font-normal">{row.client}</th>
+            <td class="py-6 pr-4 text-[28px] font-semibold">{row.day}</td>
+            <td class="py-6 text-[28px] font-semibold">{row.month}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    <p class="mt-4 text-[14px] text-muted">{price.note}</p>
+    <h2 class="mt-16 font-display text-[32px] font-semibold leading-[1.1]">{price.afterTitle}</h2>
+    <p class="mt-4">{price.after}</p>
+    {price.invoiceTitle ? (
+      <>
+        <h2 class="mt-12 font-display text-[32px] font-semibold leading-[1.1]">{price.invoiceTitle}</h2>
+        <p class="mt-4">{price.invoice}</p>
+      </>
+    ) : null}
+    <h2 class="mt-12 font-display text-[32px] font-semibold leading-[1.1]">{price.freeTitle}</h2>
+    <ul class="mt-4 list-disc space-y-2 pl-5">
+      {price.free.map((item) => <li>{item.text}</li>)}
+    </ul>
+    <p class="mt-4 text-[14px] text-muted">{price.freeNote}</p>
+    <h2 class="mt-12 font-display text-[32px] font-semibold leading-[1.1]">{price.whyTitle}</h2>
+    <p class="mt-4">{price.why}</p>
+  </div>
+  <div class="bg-parchment">
+    <div class="mx-auto max-w-[1200px] px-6 py-20">
+      <div data-quote-root data-locale={locale}>
+        <script type="application/json" data-quote-payload set:html={serializeJsonForHtml(price.quote)} />
+      </div>
+      <p class="mt-12">
+        <Link class="inline-flex min-h-11 items-center rounded-full bg-primary px-[22px] text-[17px] text-white" href={href(locale, price.contact.href)}>{price.contact.label}</Link>
+      </p>
+    </div>
+  </div>
+</article>
+<script>
+  import { mountQuoteCalculator } from '@/theme/partials/quote/quote.client';
+  for (const root of document.querySelectorAll<HTMLElement>('[data-quote-root]')) mountQuoteCalculator(root);
+</script>

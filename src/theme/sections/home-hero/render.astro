@@ -1,0 +1,54 @@
+---
+import { serializeJsonForHtml, useSection } from '@/platform/theme';
+import type { HomeHeroSection } from '@/platform/theme';
+import { href, siteLocale } from '@/theme/path';
+import Image from '@/theme/partials/image/render.astro';
+import Link from '@/theme/partials/link/render.astro';
+const { locale: requested, settings: home } = useSection<HomeHeroSection>(Astro);
+const locale = siteLocale(requested);
+const source = home.schema as {
+  name: string;
+  description: string;
+  addressCountry: string;
+  addressRegion: string;
+  addressLocality: string;
+  knowsLanguage: string[];
+  offers: { name: string; price: string; priceCurrency: string; unitText: string }[];
+};
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'ProfessionalService',
+  name: source.name,
+  description: source.description,
+  address: {
+    '@type': 'PostalAddress',
+    addressCountry: source.addressCountry,
+    addressRegion: source.addressRegion,
+    addressLocality: source.addressLocality,
+  },
+  knowsLanguage: source.knowsLanguage,
+  makesOffer: source.offers.map((offer) => ({
+    '@type': 'Offer',
+    name: offer.name,
+    price: offer.price,
+    priceCurrency: offer.priceCurrency,
+    unitText: offer.unitText,
+  })),
+};
+---
+<script type="application/ld+json" is:inline set:html={serializeJsonForHtml(schema)} />
+<section class="bg-white">
+  <div class="mx-auto max-w-[980px] px-6 pb-12 pt-20 text-center min-[834px]:pb-16 min-[834px]:pt-28">
+    <p class="text-[12px] tracking-[-0.12px] text-muted">{home.kicker}</p>
+    <h1 class="font-display mx-auto mt-4 max-w-[12ch] text-[40px] font-semibold leading-[1.07] tracking-[-0.28px] text-balance min-[1069px]:text-[56px]">{home.h1}</h1>
+    <p class="mx-auto mt-6 max-w-[20rem] text-[28px] font-normal leading-[1.14] tracking-[0.196px]">{home.lead}</p>
+    <p class="mx-auto mt-5 max-w-[34rem] text-[17px] leading-[1.47]">{home.body}</p>
+    <p class="mt-10 flex flex-wrap justify-center gap-3">
+      <Link class="inline-flex min-h-11 items-center rounded-full bg-primary px-[22px] text-[17px] text-white" href={href(locale, home.priceLink.href)}>{home.priceLink.label}</Link>
+      <Link class="inline-flex min-h-11 items-center rounded-full px-[22px] text-[17px] text-primary" href={href(locale, home.contactLink.href)}>{home.contactLink.label}</Link>
+    </p>
+  </div>
+</section>
+{home.heroImage.file && (
+  <Image class="h-72 w-full object-cover object-center min-[834px]:h-[28rem]" asset={home.heroImage.file} alt={home.heroImage.label} width={home.heroImage.file.width} height={home.heroImage.file.height} />
+)}

@@ -1,0 +1,2 @@
+FUNCTION_ORIGINS=http://localhost:3000,http://localhost:3001
+STORAGE_READ_URL_SECRET=replace-with-a-distinct-32-character-random-secret

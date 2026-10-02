@@ -1,0 +1,79 @@
+---
+import type { ConsentSettings } from '@/platform/theme/consent/server';
+const { settings } = Astro.props as { settings?: ConsentSettings };
+---
+{settings?.enabled && settings.display.mode !== 'never' && (
+  <dialog class="cms-consent fixed right-4 bottom-4 left-auto top-auto z-50 m-0 w-[calc(100%-2rem)] max-w-md overflow-hidden rounded-lg border border-neutral-200 bg-white p-0 text-neutral-950 shadow-2xl sm:right-6 sm:bottom-6 sm:w-full" aria-labelledby="cms-consent-title" aria-describedby="cms-consent-description" data-cms-consent-banner data-version={settings.cookie.version} data-max-age-days={settings.cookie.maxAgeDays} data-preview={String(settings.preview)} data-display={JSON.stringify(settings.display)}>
+    <form class="grid gap-4 p-6 sm:p-7" method="dialog">
+      <h2 class="m-0 text-xl font-semibold tracking-tight focus:outline-none" id="cms-consent-title" tabindex="-1" data-cms-consent-title>{settings.messages.title}</h2>
+      <p class="m-0 text-sm leading-6 text-neutral-600" id="cms-consent-description">{settings.messages.description}</p>
+      <nav class="flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium" aria-label={settings.messages.title}>
+        <a class="underline decoration-1 underline-offset-4 hover:text-neutral-600" href={settings.privacyPolicy.href}>{settings.privacyPolicy.title}</a>
+        {settings.cookiePolicy && <a class="underline decoration-1 underline-offset-4 hover:text-neutral-600" href={settings.cookiePolicy.href}>{settings.cookiePolicy.title}</a>}
+      </nav>
+      <fieldset class="grid gap-3 rounded-sm border border-neutral-200 bg-neutral-50 p-4" data-cms-consent-preferences hidden>
+        <legend class="px-1 text-sm font-semibold">{settings.messages.managePreferences}</legend>
+        <label class="flex items-center gap-3 text-sm"><input class="size-4 accent-neutral-950" type="checkbox" checked disabled /> {settings.messages.necessary}</label>
+        <label class="flex items-center gap-3 text-sm"><input class="size-4 accent-neutral-950" type="checkbox" name="analytics" /> {settings.messages.analytics}</label>
+        <label class="flex items-center gap-3 text-sm"><input class="size-4 accent-neutral-950" type="checkbox" name="marketing" /> {settings.messages.marketing}</label>
+        <label class="flex items-center gap-3 text-sm"><input class="size-4 accent-neutral-950" type="checkbox" name="preferences" /> {settings.messages.preferences}</label>
+        <label class="flex items-center gap-3 text-sm"><input class="size-4 accent-neutral-950" type="checkbox" name="saleOfData" /> {settings.messages.saleOfData}</label>
+      </fieldset>
+      <div class="grid grid-cols-2 gap-2 pt-1" data-cms-consent-actions>
+        <button class="col-span-2 row-start-1 min-h-11 cursor-pointer rounded-sm border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-neutral-100" type="button" data-cms-consent-manage>{settings.messages.managePreferences}</button>
+        <button class="col-span-2 min-h-11 cursor-pointer rounded-sm border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800" value="save" data-cms-consent-save hidden>{settings.messages.savePreferences}</button>
+        <button class="min-h-11 cursor-pointer rounded-sm border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-neutral-100" value="reject" data-cms-consent-reject>{settings.messages.rejectOptional}</button>
+        <button class="min-h-11 cursor-pointer rounded-sm border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800" value="accept" data-cms-consent-accept>{settings.messages.acceptAll}</button>
+      </div>
+    </form>
+  </dialog>
+)}
+<script>
+  import { acceptAllConsent, getConsent, rejectOptionalConsent, setConsent } from '@/platform/theme/consent/browser';
+  import { activateDocumentInjections } from '@/platform/theme/consent/injections';
+  import { shouldDisplayConsent } from '@/platform/theme/consent/policy';
+  for (const node of document.querySelectorAll<HTMLDialogElement>('[data-cms-consent-banner]')) {
+    const version = Number(node.dataset.version); const maxAgeDays = Number(node.dataset.maxAgeDays); const preview = node.dataset.preview === 'true';
+    activateDocumentInjections(version, preview);
+    const display = JSON.parse(node.dataset.display ?? '{"mode":"never"}') as import('@/platform/theme/render/model').ResolvedConsent['display'];
+    const showWhenRequired = async () => {
+      if (getConsent(version, preview) || node.open) return;
+      let geo: Readonly<{ countryCode?: string; regionCode?: string }> | undefined;
+      if (display.mode === 'regions' && !preview) {
+        try {
+          const response = await fetch('/_/public/cms/privacy/read', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { accept: 'application/json', 'content-type': 'application/json' },
+            body: '{}',
+          });
+          if (response.ok) geo = (await response.json() as { data?: typeof geo }).data;
+        } catch { /* The configured unknown-region policy is the safe fallback. */ }
+      }
+      if (shouldDisplayConsent({ enabled: true, display }, geo)) node.show();
+    };
+    void showWhenRequired();
+    node.querySelector('[data-cms-consent-accept]')?.addEventListener('click', () => acceptAllConsent(version, maxAgeDays, preview));
+    node.querySelector('[data-cms-consent-reject]')?.addEventListener('click', () => rejectOptionalConsent(version, maxAgeDays, preview));
+    const preferences = node.querySelector<HTMLElement>('[data-cms-consent-preferences]');
+    const title = node.querySelector<HTMLElement>('[data-cms-consent-title]');
+    const manage = node.querySelector<HTMLButtonElement>('[data-cms-consent-manage]');
+    const save = node.querySelector<HTMLButtonElement>('[data-cms-consent-save]');
+    const openPreferences = () => {
+      const current = getConsent(version, preview);
+      for (const input of node.querySelectorAll<HTMLInputElement>('[data-cms-consent-preferences] input[name]')) input.checked = current?.choices[input.name as keyof typeof current.choices] ?? false;
+      if (preferences) preferences.hidden = false;
+      if (manage) manage.hidden = true;
+      if (save) save.hidden = false;
+      if (!node.open) node.show();
+      title?.focus({ preventScroll: true });
+    };
+    manage?.addEventListener('click', openPreferences);
+    save?.addEventListener('click', () => setConsent({
+      version,
+      decidedAt: new Date().toISOString(),
+      choices: Object.fromEntries(Array.from(node.querySelectorAll<HTMLInputElement>('[data-cms-consent-preferences] input[name]')).map((input) => [input.name, input.checked])) as Record<'analytics' | 'marketing' | 'preferences' | 'saleOfData', boolean>,
+    }, maxAgeDays, preview));
+    addEventListener('cms:consent-open-preferences', openPreferences);
+  }
+</script>

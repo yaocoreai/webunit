@@ -1,0 +1,10 @@
+---
+import SlotArea from '@/platform/theme/slot-area.astro';
+import SlotLayout from '@/platform/theme/slot-layout.astro';
+import type { SlotPreviewRuntime } from '@/platform/theme';
+
+const { runtime } = Astro.props as { runtime: SlotPreviewRuntime };
+---
+<SlotLayout runtime={runtime} frame>
+  <SlotArea runtime={runtime} slotKey="page.main" size="lg" />
+</SlotLayout>

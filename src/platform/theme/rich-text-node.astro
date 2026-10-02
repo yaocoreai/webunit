@@ -1,0 +1,65 @@
+---
+import { groupRichTextLists, isStandardRichTextType, safeRichTextEmbedUrl, safeRichTextMediaUrl } from '@/platform/theme/render/rich-text';
+import type { RichTextBlock, RichTextInlineNode, RichTextRendererMap } from '@/platform/theme/render/rich-text';
+import RichTextInlineView from './rich-text-inline.astro';
+
+interface Props { node: RichTextBlock; renderers: RichTextRendererMap; asItem?: boolean }
+const { node, renderers, asItem = false } = Astro.props;
+const Renderer = renderers[node.type];
+if (!Renderer && !isStandardRichTextType(node.type)) throw new Error(`Unsupported RichText block: ${node.type}`);
+const props = node.props ?? {};
+const content = Array.isArray(node.content) ? node.content as readonly RichTextInlineNode[] : [];
+const children = node.children ?? [];
+const headingLevel = [1, 2, 3, 4, 5, 6].includes(Number(props.level)) ? Number(props.level) : 2;
+const embedUrl = safeRichTextEmbedUrl(props.provider, props.url);
+const mediaUrl = embedUrl ? undefined : safeRichTextMediaUrl(props.url);
+const caption = typeof props.caption === 'string' ? props.caption : '';
+const assetAlt = typeof props.assetAlt === 'string' ? props.assetAlt : '';
+const imageAlt = assetAlt || (typeof props.name === 'string' ? props.name : '') || caption;
+const assetWidth = typeof props.assetWidth === 'number' ? props.assetWidth : undefined;
+const assetHeight = typeof props.assetHeight === 'number' ? props.assetHeight : undefined;
+const fileText = content.flatMap((item) => item.type === 'text' ? [item.text] : item.type === 'link' ? item.content.map((text) => text.text) : []).join('').trim();
+const storedName = typeof props.name === 'string' && props.name ? props.name : '';
+const fileLabel = fileText || storedName || caption || 'Download file';
+const mediaTitle = caption || storedName || fileText || undefined;
+const language = typeof props.language === 'string' ? props.language : undefined;
+const textAlign = props.textAlign === 'left' || props.textAlign === 'center' || props.textAlign === 'right' || props.textAlign === 'justify' ? props.textAlign : undefined;
+type TableCell = readonly RichTextInlineNode[] | Readonly<{ content?: readonly RichTextInlineNode[]; props?: Readonly<Record<string, unknown>> }>;
+const tableContent = node.type === 'table' && node.content && !Array.isArray(node.content) && typeof node.content === 'object' ? node.content as Readonly<Record<string, unknown>> : undefined;
+const tableRows = tableContent && Array.isArray(tableContent.rows)
+  ? tableContent.rows as readonly Readonly<{ cells?: readonly TableCell[] }>[]
+  : [];
+const cellContent = (cell: TableCell): readonly RichTextInlineNode[] => 'content' in cell ? cell.content ?? [] : cell as readonly RichTextInlineNode[];
+const cellProps = (cell: TableCell): Readonly<Record<string, unknown>> => 'props' in cell ? cell.props ?? {} : {};
+const cellWidth = (cell: TableCell) => {
+  const width = cellProps(cell).colwidth;
+  return Array.isArray(width) && typeof width[0] === 'number' ? `${width[0]}px` : undefined;
+};
+const cellStyle = (cell: TableCell) => {
+  const align = cellProps(cell).textAlign;
+  const textAlign = align === 'left' || align === 'center' || align === 'right' || align === 'justify' ? align : undefined;
+  return { width: cellWidth(cell), textAlign };
+};
+const nestsChildren = !Renderer && (node.type === 'quote' || node.type === 'bulletListItem' || node.type === 'numberedListItem' || node.type === 'checkListItem' || node.type === 'toggleListItem');
+const childGroups = groupRichTextLists(children, renderers);
+---
+{Renderer ? <Renderer node={node} /> : node.type === 'paragraph' ? (
+  <p class="rich-text__paragraph" style={{ textAlign }}>{content.map((inline) => <RichTextInlineView node={inline} />)}</p>
+) : node.type === 'heading' ? (
+  headingLevel === 1 ? <h1 class="rich-text__heading rich-text__heading--1" style={{ textAlign }}>{content.map((item) => <RichTextInlineView node={item} />)}</h1> : headingLevel === 3 ? <h3 class="rich-text__heading rich-text__heading--3" style={{ textAlign }}>{content.map((item) => <RichTextInlineView node={item} />)}</h3> : headingLevel === 4 ? <h4 class="rich-text__heading rich-text__heading--4" style={{ textAlign }}>{content.map((item) => <RichTextInlineView node={item} />)}</h4> : headingLevel === 5 ? <h5 class="rich-text__heading rich-text__heading--5" style={{ textAlign }}>{content.map((item) => <RichTextInlineView node={item} />)}</h5> : headingLevel === 6 ? <h6 class="rich-text__heading rich-text__heading--6" style={{ textAlign }}>{content.map((item) => <RichTextInlineView node={item} />)}</h6> : <h2 class="rich-text__heading rich-text__heading--2" style={{ textAlign }}>{content.map((item) => <RichTextInlineView node={item} />)}</h2>
+) : node.type === 'quote' ? <blockquote class="rich-text__blockquote" style={{ textAlign }}>{content.map((item) => <RichTextInlineView node={item} />)}{childGroups.map((group) => group.kind === 'block' ? <Astro.self node={group.node} renderers={renderers} /> : group.list === 'bullet' ? <ul class="rich-text__list">{group.nodes.map((item) => <Astro.self node={item} renderers={renderers} asItem />)}</ul> : <ol class="rich-text__list">{group.nodes.map((item) => <Astro.self node={item} renderers={renderers} asItem />)}</ol>)}</blockquote>
+  : node.type === 'bulletListItem' || node.type === 'numberedListItem' ? (asItem ? <li style={{ textAlign }}>{content.map((item) => <RichTextInlineView node={item} />)}{childGroups.map((group) => group.kind === 'block' ? <Astro.self node={group.node} renderers={renderers} /> : group.list === 'bullet' ? <ul class="rich-text__list">{group.nodes.map((item) => <Astro.self node={item} renderers={renderers} asItem />)}</ul> : <ol class="rich-text__list">{group.nodes.map((item) => <Astro.self node={item} renderers={renderers} asItem />)}</ol>)}</li> : node.type === 'bulletListItem' ? <ul class="rich-text__list"><li style={{ textAlign }}>{content.map((item) => <RichTextInlineView node={item} />)}{childGroups.map((group) => group.kind === 'block' ? <Astro.self node={group.node} renderers={renderers} /> : group.list === 'bullet' ? <ul class="rich-text__list">{group.nodes.map((item) => <Astro.self node={item} renderers={renderers} asItem />)}</ul> : <ol class="rich-text__list">{group.nodes.map((item) => <Astro.self node={item} renderers={renderers} asItem />)}</ol>)}</li></ul> : <ol class="rich-text__list"><li style={{ textAlign }}>{content.map((item) => <RichTextInlineView node={item} />)}{childGroups.map((group) => group.kind === 'block' ? <Astro.self node={group.node} renderers={renderers} /> : group.list === 'bullet' ? <ul class="rich-text__list">{group.nodes.map((item) => <Astro.self node={item} renderers={renderers} asItem />)}</ul> : <ol class="rich-text__list">{group.nodes.map((item) => <Astro.self node={item} renderers={renderers} asItem />)}</ol>)}</li></ol>)
+  : node.type === 'checkListItem' ? <div class="rich-text__check-item" style={{ textAlign }}><label><input type="checkbox" checked={props.checked === true} disabled /> {content.map((item) => <RichTextInlineView node={item} />)}</label>{childGroups.map((group) => group.kind === 'block' ? <Astro.self node={group.node} renderers={renderers} /> : group.list === 'bullet' ? <ul class="rich-text__list">{group.nodes.map((item) => <Astro.self node={item} renderers={renderers} asItem />)}</ul> : <ol class="rich-text__list">{group.nodes.map((item) => <Astro.self node={item} renderers={renderers} asItem />)}</ol>)}</div>
+  : node.type === 'toggleListItem' ? <details class="rich-text__toggle-item"><summary style={{ textAlign }}>{content.map((item) => <RichTextInlineView node={item} />)}</summary>{childGroups.map((group) => group.kind === 'block' ? <Astro.self node={group.node} renderers={renderers} /> : group.list === 'bullet' ? <ul class="rich-text__list">{group.nodes.map((item) => <Astro.self node={item} renderers={renderers} asItem />)}</ul> : <ol class="rich-text__list">{group.nodes.map((item) => <Astro.self node={item} renderers={renderers} asItem />)}</ol>)}</details>
+  : node.type === 'codeBlock' ? <pre class="rich-text__code-block"><code class={language ? `language-${language}` : undefined}>{content.map((item) => item.type === 'text' ? item.text : '').join('')}</code></pre>
+  : node.type === 'divider' ? <hr class="rich-text__divider" />
+  : node.type === 'image' && mediaUrl ? <img class="rich-text__image" src={mediaUrl} alt={imageAlt} loading="lazy" />
+  : node.type === 'video' && mediaUrl ? <video class="rich-text__video" src={mediaUrl} width={assetWidth} height={assetHeight} controls preload="metadata" />
+  : node.type === 'video' && embedUrl ? <iframe class="rich-text__embed" src={embedUrl} width={assetWidth} height={assetHeight} title={mediaTitle} loading="lazy" allowfullscreen></iframe>
+  : node.type === 'audio' && mediaUrl ? <audio class="rich-text__audio" src={mediaUrl} controls preload="metadata" />
+  : node.type === 'audio' && embedUrl ? <iframe class="rich-text__audio-embed" src={embedUrl} title={mediaTitle} loading="lazy"></iframe>
+  : node.type === 'file' && mediaUrl ? <a class="rich-text__file" href={mediaUrl}>{fileLabel.split('\n').flatMap((part, index) => index === 0 ? [part] : [<br />, part])}</a>
+  : node.type === 'file' ? <span class="rich-text__file">{fileLabel.split('\n').flatMap((part, index) => index === 0 ? [part] : [<br />, part])}</span>
+  : node.type === 'table' ? <div class="rich-text__table-scroll"><table class="rich-text__table"><tbody>{tableRows.map((row) => <tr>{(row.cells ?? []).map((cell) => cellProps(cell).header === true ? <th colspan={Number(cellProps(cell).colspan) || undefined} rowspan={Number(cellProps(cell).rowspan) || undefined} style={cellStyle(cell)}>{cellContent(cell).map((item) => <RichTextInlineView node={item} />)}</th> : <td colspan={Number(cellProps(cell).colspan) || undefined} rowspan={Number(cellProps(cell).rowspan) || undefined} style={cellStyle(cell)}>{cellContent(cell).map((item) => <RichTextInlineView node={item} />)}</td>)}</tr>)}</tbody></table></div>
+  : null}
+{!nestsChildren && childGroups.map((group) => group.kind === 'block' ? <Astro.self node={group.node} renderers={renderers} /> : group.list === 'bullet' ? <ul class="rich-text__list">{group.nodes.map((item) => <Astro.self node={item} renderers={renderers} asItem />)}</ul> : <ol class="rich-text__list">{group.nodes.map((item) => <Astro.self node={item} renderers={renderers} asItem />)}</ol>)}

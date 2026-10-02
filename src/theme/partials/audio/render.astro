@@ -1,0 +1,8 @@
+---
+import type { ComponentProps } from 'astro/types';
+import PlatformAudio from '@/platform/theme/audio.astro';
+
+type Props = ComponentProps<typeof PlatformAudio>;
+const props = Astro.props;
+---
+<PlatformAudio {...props}><slot /></PlatformAudio>

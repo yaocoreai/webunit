@@ -1,0 +1,19 @@
+---
+import { useSection } from '@/platform/theme';
+import type { HomeTeamSection } from '@/platform/theme';
+import Image from '@/theme/partials/image/render.astro';
+
+const { settings } = useSection<HomeTeamSection>(Astro);
+const home = settings;
+---
+<section class="bg-parchment">
+  <div class="mx-auto grid max-w-[980px] items-center gap-12 px-6 py-20 min-[834px]:grid-cols-2">
+    {home.teamImage.file && (
+      <Image class="h-auto w-full" asset={home.teamImage.file} alt={home.teamImage.label} width={home.teamImage.file.width} height={home.teamImage.file.height} />
+    )}
+    <div>
+      <h2 class="font-display text-[40px] font-semibold leading-[1.1]">{home.teamTitle}</h2>
+      <p class="mt-5 text-[17px] leading-[1.47]">{home.teamBody}</p>
+    </div>
+  </div>
+</section>

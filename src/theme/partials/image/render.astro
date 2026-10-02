@@ -1,0 +1,8 @@
+---
+import type { ComponentProps } from 'astro/types';
+import PlatformImage from '@/platform/theme/image.astro';
+
+type Props = ComponentProps<typeof PlatformImage>;
+const props = Astro.props;
+---
+<PlatformImage {...props}><slot /></PlatformImage>

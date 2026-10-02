@@ -1,0 +1,42 @@
+---
+import { useSection } from '@/platform/theme';
+import type { HomeNewsSection } from '@/platform/theme';
+import type { ArticleEntry } from '@/theme/types';
+import { href, siteLocale } from '@/theme/path';
+import Image from '@/theme/partials/image/render.astro';
+import Link from '@/theme/partials/link/render.astro';
+import Placeholder from '@/theme/partials/placeholder/render.astro';
+
+const { locale: requested, settings: home, content } = useSection<HomeNewsSection>(Astro);
+const locale = siteLocale(requested);
+const caption = home.placeholderCaption;
+const articles = (await content.module<ArticleEntry>('article').findMany({
+  orderBy: [{ path: 'fields.order', direction: 'asc' }],
+  limit: 20,
+})).items.slice(0, home.newsCount);
+---
+<section class="bg-parchment">
+  <div class="mx-auto max-w-[980px] px-6 py-20">
+    <div class="flex items-baseline justify-between">
+      <h2 class="font-display text-[40px] font-semibold leading-[1.1]">{home.newsTitle}</h2>
+      <Link class="text-primary" href={href(locale, home.newsAll.href)}>{home.newsAll.label}</Link>
+    </div>
+    <ul class="mt-8">
+      {articles.map((article) => (
+        <li class="border-t border-hairline">
+          <Link class="grid gap-5 py-6 min-[834px]:grid-cols-[220px_1fr] min-[834px]:items-center" href={href(locale, article.page?.path ?? '')}>
+            {article.fields.image ? (
+              <Image class="h-28 w-full object-cover" asset={article.fields.image} alt={article.fields.title} width={220} height={112} />
+            ) : (
+              <Placeholder label={article.fields.image_label ?? ''} caption={caption} size="row" />
+            )}
+            <span>
+              <span class="block text-[21px] font-semibold leading-[1.19]">{article.fields.title}</span>
+              <span class="mt-2 block text-[14px] leading-[1.43] text-muted">{article.fields.description}</span>
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>

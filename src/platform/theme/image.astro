@@ -1,0 +1,69 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import type { CmsAsset } from './content/public';
+import { placeholderImage } from './render/placeholder-image/index';
+import type { PlaceholderImageName } from './render/placeholder-image/types';
+
+type Props = Omit<HTMLAttributes<'img'>, 'src' | 'width' | 'height'> & {
+  asset?: CmsAsset | null;
+  placeholder?: PlaceholderImageName | Readonly<{
+    name: PlaceholderImageName;
+    backgroundColor?: string;
+    foregroundColor?: string;
+  }> | Readonly<{ src: string }> | false;
+  width?: number;
+  height?: number;
+  alt?: string;
+};
+const { asset, placeholder = 'image', width, height, alt, ...attributes } = Astro.props;
+const resolvedAlt = alt ?? (asset?.type === 'image' ? asset.alt : undefined) ?? '';
+const placeholderName = typeof placeholder === 'string' ? placeholder : typeof placeholder === 'object' && 'name' in placeholder ? placeholder.name : undefined;
+const backgroundColor = typeof placeholder === 'object' && 'name' in placeholder ? placeholder.backgroundColor : undefined;
+const foregroundColor = typeof placeholder === 'object' && 'name' in placeholder ? placeholder.foregroundColor : undefined;
+const customPlaceholderSource = typeof placeholder === 'object' && 'src' in placeholder ? placeholder.src.trim() : '';
+const assetSource = asset?.type === 'image' && asset.delivery.type === 'file' ? asset.delivery.url : '';
+const fallbackSource = customPlaceholderSource || (placeholderName ? await placeholderImage(placeholderName, { width, height, backgroundColor, foregroundColor }) : '');
+const imageSource = assetSource || fallbackSource;
+---
+{imageSource ? <img {...attributes} src={imageSource} width={width} height={height} alt={resolvedAlt} data-placeholder-image={assetSource ? placeholderName : undefined} data-placeholder-background={assetSource ? backgroundColor : undefined} data-placeholder-foreground={assetSource ? foregroundColor : undefined} data-placeholder-src={assetSource ? customPlaceholderSource || undefined : undefined} /> : <span><slot /></span>}
+
+<script>
+  import { placeholderImage } from '@/platform/theme/render/placeholder-image/index';
+
+  const attribute = 'data-placeholder-image';
+
+  async function replaceFailedImage(image: HTMLImageElement): Promise<void> {
+    const name = image.dataset.placeholderImage;
+    const source = image.dataset.placeholderSrc;
+    if (!name && !source) return;
+    delete image.dataset.placeholderImage;
+    const backgroundColor = image.dataset.placeholderBackground;
+    const foregroundColor = image.dataset.placeholderForeground;
+    delete image.dataset.placeholderBackground;
+    delete image.dataset.placeholderForeground;
+    delete image.dataset.placeholderSrc;
+    if (source) {
+      image.src = source;
+      return;
+    }
+    const readDimension = (value: string | null): number | undefined => {
+      if (!value) return undefined;
+      const dimension = Number(value);
+      return Number.isInteger(dimension) && dimension > 0 ? dimension : undefined;
+    };
+    image.src = await placeholderImage(name as Parameters<typeof placeholderImage>[0], {
+      width: readDimension(image.getAttribute('width')),
+      height: readDimension(image.getAttribute('height')),
+      backgroundColor,
+      foregroundColor,
+    });
+  }
+
+  document.addEventListener('error', (event) => {
+    if (event.target instanceof HTMLImageElement) void replaceFailedImage(event.target);
+  }, true);
+
+  for (const image of document.querySelectorAll<HTMLImageElement>(`img[${attribute}],img[data-placeholder-src]`)) {
+    if (image.complete && image.naturalWidth === 0) void replaceFailedImage(image);
+  }
+</script>

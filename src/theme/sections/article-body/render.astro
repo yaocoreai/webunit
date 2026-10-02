@@ -1,0 +1,42 @@
+---
+import { useSection } from '@/platform/theme';
+import type { ArticleBodySection } from '@/platform/theme';
+import type { ArticleEntry } from '@/theme/types';
+import { href, siteLocale } from '@/theme/path';
+import { renderMarkdown } from '@/theme/markdown';
+import Image from '@/theme/partials/image/render.astro';
+import Link from '@/theme/partials/link/render.astro';
+
+const { locale: requested, entry, template, content } = useSection<ArticleBodySection>(Astro);
+const locale = siteLocale(requested);
+const articles = (await content.module<ArticleEntry>('article').findMany({
+  orderBy: [{ path: 'fields.order', direction: 'asc' }],
+  limit: 20,
+})).items;
+const index = articles.findIndex((item) => item.id === entry.id);
+const article = articles[index];
+const next = index >= 0 ? articles[index + 1] : undefined;
+const chrome = template.settings as { backLabel?: string; end?: string; nextLabel?: string; nextSep?: string };
+---
+<article class="mx-auto max-w-[680px] px-6 pb-20 pt-20 min-[834px]:pt-24">
+  <p class="text-[12px] tracking-[-0.12px] text-muted">
+    <Link class="text-primary" href={href(locale, '/news')}>{chrome.backLabel}</Link>
+  </p>
+  {article ? (
+    <>
+      <h1 class="font-display mt-3 text-[34px] font-semibold leading-[1.1] tracking-[-0.374px] min-[641px]:text-[40px]">{article.fields.title}</h1>
+      {article.fields.image && (
+        <Image class="mt-8 w-full" asset={article.fields.image} alt={article.fields.title} width={article.fields.image.width} height={article.fields.image.height} />
+      )}
+      <div class="mt-8" set:html={renderMarkdown(article.fields.body ?? '')} />
+      <p class="mt-10 text-[14px] tracking-[-0.224px] text-muted">{chrome.end}</p>
+      {next?.page?.path && (
+        <p class="mt-8 border-t border-hairline pt-6">
+          <Link class="text-primary" href={href(locale, next.page.path)}>{chrome.nextLabel}{chrome.nextSep}{next.fields.title} ›</Link>
+        </p>
+      )}
+    </>
+  ) : (
+    <h1 class="font-display mt-3 text-[34px] font-semibold">{chrome.backLabel}</h1>
+  )}
+</article>

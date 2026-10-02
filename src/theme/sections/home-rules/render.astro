@@ -1,0 +1,17 @@
+---
+import { useSection } from '@/platform/theme';
+import type { HomeRulesSection } from '@/platform/theme';
+import { siteLocale } from '@/theme/path';
+
+const { locale: requested, settings } = useSection<HomeRulesSection>(Astro);
+const locale = siteLocale(requested);
+const home = settings;
+---
+<section class="bg-white">
+  <div class="mx-auto max-w-[720px] px-6 py-20">
+    <h2 class="font-display text-[40px] font-semibold leading-[1.1]">{home.rulesTitle}</h2>
+    <ol class="mt-8 list-decimal space-y-4 pl-5 text-[17px] leading-[1.47]">
+      {home.rules.map((rule) => <li>{rule.text}</li>)}
+    </ol>
+  </div>
+</section>

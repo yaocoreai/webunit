@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "SF Pro Text", system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --font-display: "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-body: var(--font-sans);
+  --font-heading: var(--font-display);
+  --color-primary: #0066cc;
+  --color-focus: #0071e3;
+  --color-ink: #1d1d1f;
+  --color-muted: #7a7a7a;
+  --color-fog: #cccccc;
+  --color-parchment: #f5f5f7;
+  --color-tile: #272729;
+  --color-hairline: #e0e0e0;
+  --color-background: #ffffff;
+  --color-foreground: #1d1d1f;
+  --color-accent: #0066cc;
+  --color-surface: #f5f5f7;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.47;
+  letter-spacing: -0.374px;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: #d6e4ff; }
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+summary::-webkit-details-marker { display: none; }
+
+@media (max-width: 833px) {
+  body:has(.site-nav[open]) { overflow: hidden; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}

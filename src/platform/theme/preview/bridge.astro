@@ -1,0 +1,147 @@
+---
+import type { PreviewTarget } from './target';
+import type { SiteManifest } from '@/platform/manifest';
+import type { ThemePreviewEnvironment } from './environment';
+
+const { editorOrigin, target, themePackage, revision, previewEnvironment, acceptUpdates = true } = Astro.props as {
+  editorOrigin: string;
+  target: PreviewTarget;
+  themePackage: SiteManifest['package'];
+  revision: number;
+  previewEnvironment: ThemePreviewEnvironment;
+  acceptUpdates?: boolean;
+};
+---
+<script is:inline define:vars={{ editorOrigin, target, themePackage, revision, previewEnvironment, acceptUpdates }}>
+  let navigating = false;
+  const isRecord = (value) => value && typeof value === 'object' && !Array.isArray(value);
+  const notify = (message) => {
+    if (window.parent !== window) window.parent.postMessage(message, editorOrigin);
+  };
+  const contentBounds = () => {
+    const body = document.body;
+    if (!body) return { left: 0, top: 0, width: Math.max(1, Math.ceil(document.documentElement.clientWidth)), height: 10 };
+    const rectangles = [body, ...body.querySelectorAll('*')]
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        return style.display !== 'none' && style.visibility !== 'hidden' && style.position !== 'fixed';
+      })
+      .flatMap((element) => Array.from(element.getClientRects()))
+      .filter((rect) => rect.width > 0 || rect.height > 0);
+    if (rectangles.length === 0) return { left: 0, top: 0, width: Math.max(1, document.documentElement.clientWidth), height: 10 };
+    const left = Math.min(...rectangles.map((rect) => rect.left));
+    const top = Math.min(...rectangles.map((rect) => rect.top));
+    const right = Math.max(...rectangles.map((rect) => rect.right));
+    const bottom = Math.max(...rectangles.map((rect) => rect.bottom));
+    return {
+      left: Math.floor(left),
+      top: Math.floor(top),
+      width: Math.max(1, Math.ceil(right - left)),
+      height: Math.max(10, Math.ceil(bottom - top)),
+    };
+  };
+  const slotStates = () => Array.from(document.querySelectorAll('[data-cms-slot]'), (element) => {
+    const children = Array.from(element.children).filter((child) => {
+      const style = getComputedStyle(child);
+      return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) !== 0;
+    }).map((child) => child.getBoundingClientRect()).filter((rect) => rect.width > 0 && rect.height > 0);
+    const available = element.getAttribute('data-cms-slot-available') !== 'false';
+    const rendered = children.length > 0;
+    const visible = available && rendered;
+    const bounds = rendered ? {
+      left: Math.floor(Math.min(...children.map((rect) => rect.left))),
+      top: Math.floor(Math.min(...children.map((rect) => rect.top))),
+      width: Math.ceil(Math.max(...children.map((rect) => rect.right)) - Math.min(...children.map((rect) => rect.left))),
+      height: Math.ceil(Math.max(...children.map((rect) => rect.bottom)) - Math.min(...children.map((rect) => rect.top))),
+    } : undefined;
+    return { key: element.getAttribute('data-cms-slot') || '', available, rendered, visible, ...(bounds ? { bounds } : {}) };
+  });
+  const dimensions = () => {
+    const content = contentBounds();
+    return { width: content.width, height: content.height, viewport: previewEnvironment.viewport, content, slots: slotStates() };
+  };
+  let syncFrame = 0;
+  const syncSize = () => {
+    if (syncFrame) return;
+    syncFrame = requestAnimationFrame(() => {
+      syncFrame = 0;
+      notify({ type: 'cms.preview.resize', version: 1, revision, ...dimensions() });
+    });
+  };
+  const activateSlot = (slotKey) => {
+    document.querySelectorAll('[data-cms-slot]').forEach((element) => {
+      const selected = element.getAttribute('data-cms-slot') === slotKey;
+      element.classList.toggle('cms-slot-area--selected', selected);
+      element.setAttribute('aria-pressed', String(selected));
+    });
+  };
+  const ready = () => notify({
+    type: 'cms.preview.ready',
+    version: 1,
+    target,
+    themePackage,
+    initialRevision: revision,
+    environment: previewEnvironment,
+    capabilities: { serverRender: acceptUpdates, revision: acceptUpdates, resize: true, contentBounds: true, slotState: target.type === 'template', slotSelect: target.type === 'template' },
+  });
+
+  new ResizeObserver(syncSize).observe(document.documentElement);
+  new MutationObserver(syncSize).observe(document.body, { attributes: true, childList: true, subtree: true });
+  addEventListener('load', () => {
+    syncSize();
+    if (revision > 0) notify({ type: 'cms.preview.rendered', version: 1, revision, ...dimensions() });
+  });
+  document.fonts?.ready.then(syncSize);
+
+  if (target.type === 'template') document.addEventListener('click', (event) => {
+    const source = event.target instanceof Element ? event.target : null;
+    const section = source?.closest('[data-cms-section]');
+    if (section) {
+      event.preventDefault();
+      notify({ type: 'cms.preview.section.select', version: 1, revision, sectionId: section.getAttribute('data-cms-section') || '' });
+      return;
+    }
+    const slot = source?.closest('[data-cms-slot]');
+    if (!slot) return;
+    event.preventDefault();
+    const slotKey = slot.getAttribute('data-cms-slot') || '';
+    activateSlot(slotKey);
+    notify({
+      type: 'cms.preview.slot.select',
+      version: 1,
+      revision,
+      templateKey: slot.getAttribute('data-cms-template') || target.key,
+      slot: slotKey,
+      label: slot.getAttribute('data-cms-slot-label') || slotKey,
+    });
+  }, true);
+
+  addEventListener('message', (event) => {
+    if (event.origin !== editorOrigin || event.source !== window.parent || !isRecord(event.data)) return;
+    if (event.data.type === 'cms.preview.connect') {
+      ready();
+      syncSize();
+      return;
+    }
+    if (event.data.type === 'cms.preview.slot.activate' && event.data.version === 1) {
+      activateSlot(typeof event.data.slot === 'string' ? event.data.slot : '');
+      return;
+    }
+    if (!acceptUpdates || navigating || event.data.type !== 'cms.preview.update' || event.data.version !== 1) return;
+    if (!Number.isInteger(event.data.revision) || event.data.revision <= revision) return;
+    if (!isRecord(event.data.target) || event.data.target.type !== target.type || event.data.target.key !== target.key) return;
+    navigating = true;
+    const form = document.createElement('form');
+    const input = document.createElement('input');
+    form.hidden = true;
+    form.method = 'post';
+    form.action = location.href;
+    input.name = 'preview';
+    input.value = JSON.stringify(event.data);
+    form.append(input);
+    document.body.append(form);
+    form.submit();
+  });
+
+  notify({ type: 'cms.preview.connect', version: 1, target });
+</script>

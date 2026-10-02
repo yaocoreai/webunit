@@ -1,0 +1,24 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import { groupRichTextLists, isRichText } from '@/platform/theme/render/rich-text';
+import type { RichTextNode, RichTextRendererMap } from '@/platform/theme/render/rich-text';
+import RichTextNodeView from './rich-text-node.astro';
+
+type Props = Omit<HTMLAttributes<'div'>, 'value'> & Readonly<{
+  value: readonly RichTextNode[];
+  renderers?: RichTextRendererMap;
+}>;
+
+const { value, renderers = {}, class: className, ...attributes } = Astro.props;
+if (!isRichText(value)) throw new Error('Invalid RichText value');
+const groups = groupRichTextLists(value, renderers);
+---
+<div class:list={['rich-text', className]} {...attributes}>
+  {groups.map((group) => group.kind === 'block' ? <RichTextNodeView node={group.node} renderers={renderers} /> : group.list === 'bullet' ? <ul class="rich-text__list">{group.nodes.map((node) => <RichTextNodeView node={node} renderers={renderers} asItem />)}</ul> : <ol class="rich-text__list">{group.nodes.map((node) => <RichTextNodeView node={node} renderers={renderers} asItem />)}</ol>)}
+</div>
+
+<style is:global>
+  :where(.rich-text img,.rich-text video){max-width:100%;height:auto}
+  :where(.rich-text pre){max-width:100%;overflow-x:auto}
+  :where(.rich-text table){width:100%;overflow-wrap:anywhere}
+</style>

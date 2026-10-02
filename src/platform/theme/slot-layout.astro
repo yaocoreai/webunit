@@ -1,0 +1,46 @@
+---
+import type { SlotPreviewRuntime } from '@/platform/theme/render/slot-preview';
+import SlotArea from './slot-area.astro';
+
+const { runtime, frame = false } = Astro.props as { runtime: SlotPreviewRuntime; frame?: boolean };
+const { viewport } = runtime;
+const empty = !Astro.slots.has('default');
+---
+<main class="cms-slot-layout" data-viewport={viewport}>
+  {frame && <SlotArea runtime={runtime} slotKey="layout.header" size="sm" />}
+  {empty && !frame ? (
+    <div class="cms-slot-layout__empty">This template has no configurable slots.</div>
+  ) : (
+    <div class="cms-slot-layout__content"><slot /></div>
+  )}
+  {frame && <SlotArea runtime={runtime} slotKey="layout.footer" size="sm" />}
+</main>
+
+<style>
+  .cms-slot-layout {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 12rem;
+    padding: 1rem;
+    background: #f4f4f5;
+    color: #27272a;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  .cms-slot-layout,
+  .cms-slot-layout__content {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .cms-slot-layout__empty {
+    display: grid;
+    min-height: 10rem;
+    place-items: center;
+    border: 1px dashed #a1a1aa;
+    border-radius: 0.375rem;
+    background: #fff;
+    color: #71717a;
+    font-size: 0.75rem;
+  }
+</style>

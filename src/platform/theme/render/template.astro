@@ -1,0 +1,16 @@
+---
+import type { DocumentRenderPayload } from '@/platform/theme/render/model';
+import Layout from '@/theme/layout/render.astro';
+
+const { value } = Astro.props as { value: DocumentRenderPayload };
+const { templateFrames, templateRenders } = await import('@/platform/generated/theme/render-runtime');
+const templateKey = value.template.templateKey as keyof typeof templateRenders;
+const loader = templateRenders[templateKey];
+if (!loader) throw new Error(`Unknown template: ${value.template.templateKey}`);
+const Template = (await loader()).default;
+const frame = templateFrames[templateKey];
+---
+<Layout payload={value} frame={frame}>
+  <Template slot="template" payload={value} />
+  <slot name="document-end" slot="document-end" />
+</Layout>

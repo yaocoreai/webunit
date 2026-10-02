@@ -1,0 +1,75 @@
+---
+import { ApiError } from '@/platform/runtime/error';
+import { createRequestRuntime } from '@/platform/theme/runtime';
+import { createResolveResponse } from '@/platform/theme/runtime/resolve-response';
+import { bindRuntime } from '@/platform/theme/render/runtime';
+import { bindRenderRuntime } from '@/platform/theme/render/context';
+import RenderPage from '@/platform/theme/render/page.astro';
+import RenderError from '@/platform/theme/render/error.astro';
+import type { ErrorRenderPayload } from '@/platform/theme/render/model';
+import { parseThemePreviewQuery } from '@/platform/theme/preview/query';
+import { applyContentCacheConfig } from '@/platform/runtime/cache-config';
+import { readPlatformEnvironment } from '@/platform/runtime/server-environment';
+import sourceDefinition from '@/platform/composition/source';
+
+if (Astro.url.pathname.startsWith('/__nextjs_')) return await (await import('@/platform/http/error-response')).createPublicHttpErrorResponse(Astro.request, 404);
+if (Astro.request.method !== 'GET' && Astro.request.method !== 'HEAD') return await (await import('@/platform/http/error-response')).createPublicHttpErrorResponse(Astro.request, 405, { allow: 'GET, HEAD' });
+const preview = parseThemePreviewQuery(Astro.url);
+if ('error' in preview) return await (await import('@/platform/http/error-response')).createPublicHttpErrorResponse(Astro.request, 400);
+const ticket = preview.present ? preview.value : undefined;
+let result;
+let errorPayload: ErrorRenderPayload | undefined;
+let runtime: Awaited<ReturnType<typeof createRequestRuntime>>;
+try {
+  runtime = await createRequestRuntime(Astro.request, sourceDefinition.contents, readPlatformEnvironment(Astro.locals), (Astro.locals as { cfContext?: { waitUntil(promise: Promise<unknown>): void } }).cfContext);
+  result = await runtime.site.resolveRenderRequest(Astro.request, ticket);
+  if (result.type === 'render') {
+    runtime.responseDependencies.add(ticket
+      ? { mode: 'no-store', visibility: 'preview', surrogateKeys: result.cache.surrogateKeys }
+      : applyContentCacheConfig(result.cache, runtime.environment));
+    const web = runtime.createWebRuntime(result.payload);
+    bindRuntime(Astro.locals, web);
+    const context = ticket || result.mode === 'theme-preview'
+      ? { environment: 'public-preview' as const }
+      : { environment: 'production' as const };
+    bindRenderRuntime(Astro.locals, { request: { ...runtime.request, environment: runtime.environment }, web, payload: result.payload, context });
+  }
+} catch (error) {
+  if (Astro.request.signal.aborted) throw error;
+  if (error instanceof ApiError && error.status >= 400 && error.status <= 599) {
+    try {
+      if (!runtime!) runtime = await createRequestRuntime(Astro.request, sourceDefinition.contents, readPlatformEnvironment(Astro.locals), (Astro.locals as { cfContext?: { waitUntil(promise: Promise<unknown>): void } }).cfContext);
+      errorPayload = await runtime.site.resolveErrorRequest(Astro.request, error.status, error.requestId);
+      const web = runtime.createWebRuntime(errorPayload);
+      bindRuntime(Astro.locals, web);
+      bindRenderRuntime(Astro.locals, { request: { ...runtime.request, environment: runtime.environment }, web, payload: errorPayload, context: { environment: 'production' } });
+      runtime.responseDependencies.add({ mode: 'no-store', visibility: 'public', surrogateKeys: [] });
+      Astro.response.status = error.status;
+      Astro.response.headers.set('cache-control', 'no-store');
+      Astro.response.headers.set('content-security-policy', "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
+      Astro.response.headers.set('referrer-policy', 'no-referrer');
+      Astro.response.headers.set('x-content-type-options', 'nosniff');
+      Astro.response.headers.set('x-robots-tag', 'noindex, nofollow');
+      if (error.requestId) Astro.response.headers.set('x-request-id', error.requestId);
+    } catch {
+      return await (await import('@/platform/http/error-response')).createPublicHttpErrorResponse(Astro.request, error.status, { requestId: error.requestId });
+    }
+  } else {
+    throw error;
+  }
+}
+let pagePayload: import('@/platform/theme/render/model').RenderPayload | undefined;
+if (!errorPayload) {
+  if (!result) throw new Error('CMS resolve produced no result');
+  const earlyResponse = await createResolveResponse(result, Astro.request);
+  if (earlyResponse) return earlyResponse;
+  if (result.type !== 'render') throw new Error('Unhandled CMS resolve result');
+  pagePayload = result.payload;
+  if (ticket || result.mode === 'theme-preview') {
+    Astro.response.headers.set('cache-control', 'no-store');
+    Astro.response.headers.set('x-robots-tag', 'noindex');
+    Astro.response.headers.set('referrer-policy', 'no-referrer');
+  }
+}
+---
+{errorPayload ? <RenderError value={errorPayload} /> : <RenderPage value={pagePayload!} />}

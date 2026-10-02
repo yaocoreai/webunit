@@ -1,0 +1,38 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import type { CmsAsset } from './content/public';
+import { isTrustedCmsAssetEmbedUrl } from './content/url';
+
+type Props = Omit<HTMLAttributes<'video'>, 'src'> & {
+  asset?: CmsAsset<'video'> | null;
+  label: string;
+  transcriptHref?: string;
+  transcriptLabel?: string;
+  controls?: boolean;
+  captions?: Array<{ src: string; srclang: string; label: string; kind?: 'captions' | 'descriptions' | 'subtitles' }>;
+};
+const { asset, label, transcriptHref, transcriptLabel = 'Transcript', controls = true, captions: captionProps = [], ...attributes } = Astro.props;
+const videoSource = asset?.delivery.type === 'file' ? asset.delivery.url : '';
+const videoProviders = {
+  youtube: { allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' },
+  vimeo: { allow: 'autoplay; fullscreen; picture-in-picture' },
+} as const;
+const embed = (() => {
+  if (asset?.delivery.type !== 'embed') return null;
+  const provider = videoProviders[asset.delivery.provider as keyof typeof videoProviders];
+  if (!provider || !isTrustedCmsAssetEmbedUrl(asset.delivery.provider, asset.delivery.url)) return null;
+  return { src: new URL(asset.delivery.url).href, allow: provider.allow };
+})();
+const videoLabel = label.trim();
+const transcriptUrl = typeof transcriptHref === 'string' ? transcriptHref.trim() : '';
+const transcriptText = transcriptLabel.trim() || `${videoLabel} transcript`;
+const captions = captionProps.flatMap((caption) => {
+  const src = typeof caption?.src === 'string' ? caption.src.trim() : '';
+  const srclang = typeof caption?.srclang === 'string' ? caption.srclang.trim() : '';
+  const label = typeof caption?.label === 'string' ? caption.label.trim() : '';
+  return src && srclang && label ? [{ src, srclang, label, kind: caption.kind ?? 'captions' }] : [];
+});
+const canRender = Boolean(videoSource && videoLabel);
+---
+{canRender ? <video src={videoSource} poster={asset?.poster?.url} width={asset?.width} height={asset?.height} controls={controls} aria-label={videoLabel} {...attributes}>{captions.map((caption, index) => <track {...caption} default={index === 0} />)}<slot /></video> : embed && videoLabel ? <iframe src={embed.src} title={videoLabel} width={asset?.width} height={asset?.height} loading="lazy" allow={embed.allow} allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe> : <span><slot /></span>}
+{canRender && transcriptUrl && <a href={transcriptUrl} aria-label={`${videoLabel}: ${transcriptText}`}>{transcriptText}</a>}

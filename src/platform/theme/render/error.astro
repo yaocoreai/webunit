@@ -1,0 +1,9 @@
+---
+import type { ErrorRenderPayload } from '@/platform/theme/render/model';
+import RenderTemplate from './template.astro';
+
+const { value } = Astro.props as { value: ErrorRenderPayload };
+---
+<RenderTemplate value={value}>
+  <slot name="document-end" slot="document-end" />
+</RenderTemplate>

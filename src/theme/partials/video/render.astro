@@ -1,0 +1,8 @@
+---
+import type { ComponentProps } from 'astro/types';
+import PlatformVideo from '@/platform/theme/video.astro';
+
+type Props = ComponentProps<typeof PlatformVideo>;
+const props = Astro.props;
+---
+<PlatformVideo {...props}><slot /></PlatformVideo>

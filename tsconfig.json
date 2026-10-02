@@ -1,0 +1,14 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/platform/theme": ["src/platform/theme/facade.ts"],
+      "@/platform/theme/viewport-variant": ["src/platform/theme/render/theme-viewport-variant.astro"],
+      "@/platform/datas": ["src/platform/theme/datas/facade.ts"],
+      "@/*": ["src/*"]
+    }
+  },
+  "include": [".astro/types.d.ts", "src"],
+  "exclude": ["dist"]
+}

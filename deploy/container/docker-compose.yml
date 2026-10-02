@@ -1,0 +1,206 @@
+name: webunit-site
+
+services:
+  web-redis-cache:
+    image: redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - ${WEB_CACHE_REDIS_MAXMEMORY:-256mb}
+      - --maxmemory-policy
+      - allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    tmpfs:
+      - /data
+
+  function-redis-cache:
+    image: redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - ${FUNCTION_CACHE_REDIS_MAXMEMORY:-256mb}
+      - --maxmemory-policy
+      - allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    tmpfs:
+      - /data
+
+  web-redis-state:
+    image: redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - ${WEB_STATE_REDIS_MAXMEMORY:-256mb}
+      - --maxmemory-policy
+      - noeviction
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    tmpfs:
+      - /data
+
+  web-clickhouse:
+    image: clickhouse/clickhouse-server:25.8.33.6-alpine
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: ${ANALYTICS_CLICKHOUSE_DATABASE:-webunit}
+      CLICKHOUSE_USER: ${ANALYTICS_CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${ANALYTICS_CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes:
+      - web-clickhouse-data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  web:
+    image: ${WEB_RUNTIME_IMAGE:-webunit-site-runtime:local}
+    build:
+      context: ../../..
+      dockerfile: site/deploy/container/Dockerfile
+      args:
+        PUBLIC_ADMIN_ORIGIN: ${PUBLIC_ADMIN_ORIGIN:-}
+        PLATFORM_RENDERER: ${PLATFORM_RENDERER:?PLATFORM_RENDERER must be theme or web}
+    restart: unless-stopped
+    depends_on:
+      web-redis-cache:
+        condition: service_healthy
+      function-redis-cache:
+        condition: service_healthy
+      web-redis-state:
+        condition: service_healthy
+      web-clickhouse:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      WEB_DATABASE_FILE: ${WEB_DATABASE_FILE:-/data/site.sqlite}
+      WEB_CACHE_REDIS_URL: ${WEB_CACHE_REDIS_URL:-redis://web-redis-cache:6379/0}
+      FUNCTION_CACHE_REDIS_URL: ${FUNCTION_CACHE_REDIS_URL:-redis://function-redis-cache:6379/0}
+      RATE_LIMIT_REDIS_URL: ${RATE_LIMIT_REDIS_URL:-redis://web-redis-state:6379/0}
+      COORDINATION_REDIS_URL: ${COORDINATION_REDIS_URL:-redis://web-redis-state:6379/0}
+      QUEUE_REDIS_URL: ${QUEUE_REDIS_URL:-redis://web-redis-state:6379/0}
+      QUEUE_REDIS_CONCURRENCY: ${QUEUE_REDIS_CONCURRENCY:-32}
+      WEB_CACHE_REDIS_MAX_CONNECTIONS: ${WEB_CACHE_REDIS_MAX_CONNECTIONS:-4}
+      WEB_CACHE_REDIS_TIMEOUT_MS: ${WEB_CACHE_REDIS_TIMEOUT_MS:-5000}
+      CMS_ADMIN_ORIGIN: ${CMS_ADMIN_ORIGIN:-}
+      THEME_INTERFACE_KEY: ${THEME_INTERFACE_KEY:-}
+      SITE_ORIGIN: ${SITE_ORIGIN:-}
+      FUNCTION_ORIGINS: ${FUNCTION_ORIGINS:-}
+      STORAGE_ORIGIN: ${STORAGE_ORIGIN:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      FUNCTION_DATA_PROTECTION_KEY: ${FUNCTION_DATA_PROTECTION_KEY:-}
+      ANALYTICS_IDENTITY_SECRET: ${ANALYTICS_IDENTITY_SECRET:-}
+      STORAGE_READ_URL_SECRET: ${STORAGE_READ_URL_SECRET:-}
+      ANALYTICS_ENABLED: ${ANALYTICS_ENABLED:-true}
+      ANALYTICS_CLICKHOUSE_URL: ${ANALYTICS_CLICKHOUSE_URL:-http://web-clickhouse:8123}
+      ANALYTICS_CLICKHOUSE_DATABASE: ${ANALYTICS_CLICKHOUSE_DATABASE:-webunit}
+      ANALYTICS_CLICKHOUSE_USER: ${ANALYTICS_CLICKHOUSE_USER:-default}
+      ANALYTICS_CLICKHOUSE_PASSWORD: ${ANALYTICS_CLICKHOUSE_PASSWORD:-}
+      ANALYTICS_QUERY_TIMEOUT_MS: ${ANALYTICS_QUERY_TIMEOUT_MS:-15000}
+      GEOIP_COUNTRY_DB_PATH: ${GEOIP_COUNTRY_DB_PATH:-}
+      GEOIP_CITY_DB_PATH: ${GEOIP_CITY_DB_PATH:-}
+      GEOIP_ASN_DB_PATH: ${GEOIP_ASN_DB_PATH:-}
+      CMS_TRUST_PROXY: ${CMS_TRUST_PROXY:-false}
+      CMS_CONTENT_TIMEOUT_MS: ${CMS_CONTENT_TIMEOUT_MS:-15000}
+      CMS_FUNCTION_TIMEOUT_MS: ${CMS_FUNCTION_TIMEOUT_MS:-15000}
+      CMS_DOCUMENT_CSP: ${CMS_DOCUMENT_CSP:-}
+      CMS_PERMISSIONS_POLICY: ${CMS_PERMISSIONS_POLICY:-}
+      CMS_CONTENT_CACHE_MODE: ${CMS_CONTENT_CACHE_MODE:-}
+      CMS_CONTENT_CACHE_BROWSER_TTL_SECONDS: ${CMS_CONTENT_CACHE_BROWSER_TTL_SECONDS:-}
+      CMS_CONTENT_CACHE_SHARED_TTL_SECONDS: ${CMS_CONTENT_CACHE_SHARED_TTL_SECONDS:-}
+      CMS_CONTENT_CACHE_STALE_WHILE_REVALIDATE_SECONDS: ${CMS_CONTENT_CACHE_STALE_WHILE_REVALIDATE_SECONDS:-}
+      CMS_DOCUMENT_CACHE_MODE: ${CMS_DOCUMENT_CACHE_MODE:-}
+      CMS_DOCUMENT_CACHE_BROWSER_TTL_SECONDS: ${CMS_DOCUMENT_CACHE_BROWSER_TTL_SECONDS:-}
+      CMS_DOCUMENT_CACHE_SHARED_TTL_SECONDS: ${CMS_DOCUMENT_CACHE_SHARED_TTL_SECONDS:-}
+      CMS_DOCUMENT_CACHE_STALE_WHILE_REVALIDATE_SECONDS: ${CMS_DOCUMENT_CACHE_STALE_WHILE_REVALIDATE_SECONDS:-}
+      HOST: 0.0.0.0
+      PORT: 3003
+    ports:
+      - "${WEB_PORT:-3003}:3003"
+    volumes:
+      - web-database-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- --header='Content-Type: application/json' --post-data='{}' http://127.0.0.1:3003/_/public/runtime/health/read | grep -q '\"status\":\"ok\"' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  worker:
+    image: ${WEB_RUNTIME_IMAGE:-webunit-site-runtime:local}
+    command: ["node", "dist/server/worker-entry.mjs"]
+    restart: unless-stopped
+    depends_on:
+      function-redis-cache:
+        condition: service_healthy
+      web-redis-state:
+        condition: service_healthy
+      web-clickhouse:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      WEB_DATABASE_FILE: ${WEB_DATABASE_FILE:-/data/site.sqlite}
+      FUNCTION_CACHE_REDIS_URL: ${FUNCTION_CACHE_REDIS_URL:-redis://function-redis-cache:6379/0}
+      RATE_LIMIT_REDIS_URL: ${RATE_LIMIT_REDIS_URL:-redis://web-redis-state:6379/0}
+      COORDINATION_REDIS_URL: ${COORDINATION_REDIS_URL:-redis://web-redis-state:6379/0}
+      QUEUE_REDIS_URL: ${QUEUE_REDIS_URL:-redis://web-redis-state:6379/0}
+      QUEUE_REDIS_CONCURRENCY: ${QUEUE_REDIS_CONCURRENCY:-32}
+      ANALYTICS_ENABLED: ${ANALYTICS_ENABLED:-true}
+      ANALYTICS_CLICKHOUSE_URL: ${ANALYTICS_CLICKHOUSE_URL:-http://web-clickhouse:8123}
+      ANALYTICS_CLICKHOUSE_DATABASE: ${ANALYTICS_CLICKHOUSE_DATABASE:-webunit}
+      ANALYTICS_CLICKHOUSE_USER: ${ANALYTICS_CLICKHOUSE_USER:-default}
+      ANALYTICS_CLICKHOUSE_PASSWORD: ${ANALYTICS_CLICKHOUSE_PASSWORD:-}
+      ANALYTICS_QUERY_TIMEOUT_MS: ${ANALYTICS_QUERY_TIMEOUT_MS:-15000}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      FUNCTION_DATA_PROTECTION_KEY: ${FUNCTION_DATA_PROTECTION_KEY:-}
+      ANALYTICS_IDENTITY_SECRET: ${ANALYTICS_IDENTITY_SECRET:-}
+      SITE_ORIGIN: ${SITE_ORIGIN:-}
+      FUNCTION_ORIGINS: ${FUNCTION_ORIGINS:-}
+      STORAGE_ORIGIN: ${STORAGE_ORIGIN:-}
+    volumes:
+      - web-database-data:/data
+    healthcheck:
+      disable: true
+
+volumes:
+  web-database-data:
+  web-clickhouse-data:

@@ -1,0 +1,7 @@
+---
+import { useTemplate } from '@/platform/theme';
+import RenderSlot from '@/platform/theme/render-slot.astro';
+
+const { payload } = useTemplate(Astro);
+---
+<RenderSlot payload={payload} scope="page" slotKey="page.main" />

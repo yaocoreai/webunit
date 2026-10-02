@@ -1,0 +1,33 @@
+---
+import type { SlotPreviewViewport } from '@/platform/theme/preview/target';
+
+const { viewport } = Astro.props as { viewport: SlotPreviewViewport };
+---
+<!doctype html>
+<html lang="en" data-cms-slot-preview={viewport}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Template slot preview</title>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+
+<style is:global>
+  html[data-cms-slot-preview],
+  html[data-cms-slot-preview] body {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0;
+    background: #f4f4f5;
+    overflow-x: hidden;
+  }
+
+  html[data-cms-slot-preview] body {
+    overflow: hidden;
+  }
+</style>

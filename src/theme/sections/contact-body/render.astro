@@ -1,0 +1,26 @@
+---
+import { useSection } from '@/platform/theme';
+import type { ContactBodySection } from '@/platform/theme';
+import { href, siteLocale } from '@/theme/path';
+import Link from '@/theme/partials/link/render.astro';
+
+const { locale: requested, settings } = useSection<ContactBodySection>(Astro);
+const locale = siteLocale(requested);
+const contact = settings;
+---
+<article class="mx-auto max-w-[680px] px-6 pb-20 pt-20 min-[834px]:pt-24">
+  <p class="text-[12px] tracking-[-0.12px] text-muted">{contact.kicker}</p>
+  <h1 class="font-display mt-3 text-[40px] font-semibold leading-[1.07] tracking-[-0.28px] min-[1069px]:text-[56px]">{contact.h1}</h1>
+  <p class="mt-5 text-[28px] font-normal leading-[1.14] tracking-[0.196px]">{contact.lead}</p>
+  <p class="mt-4">{contact.body}</p>
+  <h2 class="mt-12 text-[28px] font-semibold tracking-[-0.28px]">{contact.stepsTitle}</h2>
+  <ol class="mt-4 list-decimal space-y-3 pl-5">
+    {contact.steps.map((step) => <li>{step.text}</li>)}
+  </ol>
+  <h2 class="mt-12 text-[28px] font-semibold tracking-[-0.28px]">{contact.teamTitle}</h2>
+  <div class="mt-4 grid gap-6">
+    <iframe class="h-[360px] w-full border border-hairline min-[834px]:h-[450px]" title={contact.mapTitle} src={contact.mapUrl} loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen />
+    <p>{contact.team}</p>
+  </div>
+  <p class="mt-10"><Link class="text-primary" href={href(locale, contact.price.href)}>{contact.price.label}</Link></p>
+</article>

@@ -1,0 +1,17 @@
+---
+import { safeRichTextHref } from '@/platform/theme/render/rich-text';
+import type { RichTextInlineNode } from '@/platform/theme/render/rich-text';
+
+interface Props { node: RichTextInlineNode }
+const { node } = Astro.props;
+const href = node.type === 'link' && typeof node.href === 'string' ? safeRichTextHref(node.href) : undefined;
+const linkTarget = node.type === 'link' && node.target === '_blank' ? '_blank' : undefined;
+const backgroundColor = node.type === 'text' && typeof node.styles.backgroundColor === 'string' ? node.styles.backgroundColor : undefined;
+---
+{node.type === 'link' ? (href ? <a class="rich-text__link" href={href} target={linkTarget} rel={linkTarget ? 'noopener noreferrer' : undefined}>{node.content.map((child) => <Astro.self node={child} />)}</a> : node.content.map((child) => <Astro.self node={child} />)) : node.type === 'text' ? (
+  <span class:list={['rich-text__text', { 'is-bold': node.styles.bold, 'is-italic': node.styles.italic, 'is-underline': node.styles.underline, 'is-strike': node.styles.strike, 'is-code': node.styles.code }]} style={{ backgroundColor }}>{node.text.split('\n').flatMap((part, index) => index === 0 ? [part] : [<br />, part])}</span>
+) : null}
+
+<style>
+  .is-bold{font-weight:700}.is-italic{font-style:italic}.is-underline{text-decoration:underline}.is-strike{text-decoration:line-through}.is-code{font-family:monospace}
+</style>

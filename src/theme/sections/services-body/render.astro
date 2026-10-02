@@ -1,0 +1,73 @@
+---
+import { useSection } from '@/platform/theme';
+import type { ServicesBodySection } from '@/platform/theme';
+import { href, siteLocale } from '@/theme/path';
+import Link from '@/theme/partials/link/render.astro';
+
+const { locale: requested, settings } = useSection<ServicesBodySection>(Astro);
+const locale = siteLocale(requested);
+const services = settings;
+---
+<article>
+  <header class="mx-auto max-w-[980px] px-6 pb-6 pt-20 text-center min-[834px]:pt-24">
+    <h1 class="font-display text-[40px] font-semibold leading-[1.07] tracking-[-0.28px] min-[1069px]:text-[56px]">{services.h1}</h1>
+    <p class="mx-auto mt-5 max-w-xl text-[21px] font-normal leading-[1.29]">{services.lead}</p>
+  </header>
+  <div class="bg-parchment">
+    <div class="mx-auto max-w-[1100px] px-6 py-16">
+      <h2 class="text-center font-display text-[32px] font-semibold leading-[1.1]">{services.customTitle}</h2>
+      <ul class="mt-8 grid gap-3 min-[834px]:grid-cols-3">
+        {services.custom.map((item) => <li class="rounded-[18px] border border-hairline bg-white px-4 py-12 text-center text-[21px] font-semibold">{item.text}</li>)}
+      </ul>
+      <p class="mx-auto mt-6 max-w-xl text-center text-[17px] text-muted">{services.customNote}{' '}<Link class="text-primary" href={href(locale, services.price.href)}>{services.price.label}</Link></p>
+    </div>
+  </div>
+  <div class="mx-auto max-w-[720px] px-6 py-20">
+    <h2 class="font-display text-[40px] font-semibold leading-[1.1]">{services.agentTitle}</h2>
+    <p class="mt-4 text-[17px] leading-[1.47]">{services.agentLead}</p>
+    <h3 class="mt-12 text-[21px] font-semibold">{services.rolesTitle}</h3>
+    <ul class="mt-6 grid gap-3 min-[834px]:grid-cols-5">
+      {services.roles.map((role) => (
+        <li class="rounded-[18px] border border-hairline px-3 py-6 text-center">
+          <p class="text-[17px] font-semibold">{role.name}</p>
+          <p class="mt-2 text-[14px] leading-[1.43] text-muted">{role.detail}</p>
+        </li>
+      ))}
+    </ul>
+    <h3 class="mt-12 text-[21px] font-semibold">{services.stepsTitle}</h3>
+    <ol class="mt-4 list-decimal space-y-4 pl-5 text-[17px] leading-[1.47]">
+      {services.steps.map((step) => (
+        <li><span class="font-semibold">{step.name}</span><span class="text-muted"> {step.detail}</span></li>
+      ))}
+    </ol>
+    <p class="mt-8 text-[17px]">{services.teach}</p>
+    <h3 class="mt-12 text-[21px] font-semibold">{services.fitTitle}</h3>
+    <ul class="mt-6 grid gap-3">
+      {services.fit.map((item) => <li class="border-b border-hairline py-4 text-[21px] font-semibold">{item.text}</li>)}
+    </ul>
+    <h3 class="mt-16 font-display text-[32px] font-semibold leading-[1.1] min-[1069px]:text-[40px]">{services.includedTitle}</h3>
+    <ul class="mt-6 grid gap-3">
+      {services.included.map((item) => <li class="border-b border-hairline py-4 text-[21px] font-semibold">{item.text}</li>)}
+    </ul>
+    <p class="mt-6 text-[14px] leading-[1.43] text-muted">{services.agentNote}</p>
+    <p class="mt-8"><Link class="text-primary" href={href(locale, services.contact.href)}>{services.contact.label}</Link></p>
+  </div>
+  <div class="bg-parchment">
+    <div class="mx-auto max-w-[720px] px-6 py-20">
+      <h2 class="font-display text-[40px] font-semibold leading-[1.1]">{services.courseTitle}</h2>
+      <p class="mt-4 text-[17px] leading-[1.47]">{services.courseLead}</p>
+      <h3 class="mt-12 text-[21px] font-semibold">{services.lessonsTitle}</h3>
+      <ol class="mt-4 list-decimal space-y-4 pl-5 text-[17px] leading-[1.47]">
+        {services.lessons.map((lesson) => (
+          <li><span class="font-semibold">{lesson.name}</span><span class="text-muted"> {lesson.detail}</span></li>
+        ))}
+      </ol>
+      <h3 class="mt-12 text-[21px] font-semibold">{services.courseFitTitle}</h3>
+      <ul class="mt-6 grid gap-3">
+        {services.courseFit.map((item) => <li class="border-b border-hairline py-4 text-[21px] font-semibold">{item.text}</li>)}
+      </ul>
+      <p class="mt-6 text-[14px] leading-[1.43] text-muted">{services.courseNote}</p>
+      <p class="mt-8"><Link class="text-primary" href={href(locale, services.contact.href)}>{services.contact.label}</Link></p>
+    </div>
+  </div>
+</article>

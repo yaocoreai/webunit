@@ -1,0 +1,33 @@
+---
+import type { DocumentRenderPayload, SlotScope } from '@/platform/theme/render/model';
+import RenderSection from './section.astro';
+import { isSlotAvailableAtWidth } from '@/platform/theme/define';
+import { readThemePreviewEnvironment } from '@/platform/theme/preview/environment';
+const { payload, scope, slotKey } = Astro.props as { payload: DocumentRenderPayload; scope: SlotScope; slotKey: string };
+const owner = scope === 'layout'
+  ? payload.layout
+  : scope === 'template'
+      ? payload.template
+      : scope === 'page' && 'page' in payload
+        ? payload.page
+        : undefined;
+if (!owner) throw new Error(`Slot scope ${scope} is not available for this document`);
+const sections = owner.slots[slotKey] ?? [];
+const templateKey = 'template' in payload ? payload.template.templateKey : 'error';
+const preview = readThemePreviewEnvironment(Astro.locals);
+const slot = await (await import('./definition-metadata')).loadSlotDefinition(scope, templateKey, slotKey);
+const available = preview && slot ? isSlotAvailableAtWidth(slot, preview.viewport.width) : true;
+const availability = slot && 'availableWhen' in slot
+  ? (slot as { availableWhen?: { minWidth?: number; maxWidth?: number } }).availableWhen
+  : undefined;
+const availabilityClass = availability ? `cms-slot-availability-${slotKey.replace(/[^a-z0-9_-]/gi, '-')}` : undefined;
+const conditions = [
+  availability?.minWidth === undefined ? undefined : `(min-width: ${availability.minWidth}px)`,
+  availability?.maxWidth === undefined ? undefined : `(max-width: ${availability.maxWidth}px)`,
+].filter(Boolean).join(' and ');
+const availabilityCss = availabilityClass ? `.${availabilityClass}{display:none}@media ${conditions}{.${availabilityClass}{display:contents}}` : undefined;
+---
+<div class={availabilityClass} data-cms-slot={slotKey} data-cms-slot-scope={scope} data-cms-slot-available={available} data-cms-template={templateKey} style={availabilityClass ? undefined : 'display:contents'}>
+  {available && sections.map((section) => <RenderSection value={section} payload={payload} />)}
+</div>
+{availabilityCss && <style is:inline set:html={availabilityCss}></style>}

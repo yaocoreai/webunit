@@ -1,0 +1,56 @@
+---
+import { useConsent, useDocumentRenderMode, useEditorPreview, useLayout } from '@/platform/theme';
+import type { Layout } from '@/platform/theme';
+import { resolveViewportMetaContent } from '@/platform/manifest';
+import RenderSeo from '@/platform/theme/render-seo.astro';
+import RenderSlot from '@/platform/theme/render-slot.astro';
+import RenderDocumentInjections from '@/platform/theme/render-document-injections.astro';
+import ConsentBanner from '@/platform/theme/consent-banner.astro';
+import '@/theme/assets/theme.css';
+import Link from '@/theme/partials/link/render.astro';
+import { themeViewport } from '@/viewport';
+import { resolveTypographyStyle } from './typography';
+
+const { payload, documentInjections, locale, layout, message, frame = '' } = useLayout<Layout>(Astro);
+const style = [
+  `--color-background:${layout.settings['colors.background']}`,
+  `--color-foreground:${layout.settings['colors.foreground']}`,
+  `--color-accent:${layout.settings['colors.accent']}`,
+  `--color-surface:${layout.settings['colors.surface']}`,
+  resolveTypographyStyle(layout.settings),
+].join(';');
+const { isSectionPreview } = useEditorPreview(Astro);
+const { isEditorPreview, allowsExternalEffects } = useDocumentRenderMode(Astro);
+const consent = useConsent(Astro);
+const injectionVersion = consent?.cookie.version ?? 0;
+const fixedViewportWidth = themeViewport.strategy === 'fixed' ? themeViewport.width : undefined;
+const viewportStyle = fixedViewportWidth === undefined ? '' : `;--theme-fixed-width:${fixedViewportWidth}px`;
+---
+<!doctype html>
+<html lang={locale === 'zh' ? 'zh-CN' : 'en'} style={`${style}${viewportStyle}`} data-cms-consent-version={injectionVersion} data-cms-editor-preview={isEditorPreview ? '' : undefined}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content={isEditorPreview ? 'width=device-width, initial-scale=1' : resolveViewportMetaContent(themeViewport)} />
+    {allowsExternalEffects && <RenderDocumentInjections injections={documentInjections} placement="head-start" />}
+    <RenderSeo payload={payload} />
+    {allowsExternalEffects && <RenderDocumentInjections injections={documentInjections} placement="head-end" />}
+  </head>
+  <body>
+    {allowsExternalEffects && <RenderDocumentInjections injections={documentInjections} placement="body-start" />}
+    {isSectionPreview ? (
+      <main id="main"><slot name="section" /></main>
+    ) : frame === '' ? (
+      <>
+        <Link class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:bg-white focus:px-3 focus:py-2 focus:text-ink" href="#main">{message('site.skipToContent')}</Link>
+        <RenderSlot payload={payload} scope="layout" slotKey="layout.header" />
+        <main id="main"><slot name="template" /></main>
+        <RenderSlot payload={payload} scope="layout" slotKey="layout.footer" />
+      </>
+    ) : (
+      <slot name="template" />
+    )}
+    {allowsExternalEffects && <ConsentBanner settings={consent} />}
+    <slot name="document-end" />
+    {allowsExternalEffects && <RenderDocumentInjections injections={documentInjections} placement="body-end" />}
+  </body>
+</html>

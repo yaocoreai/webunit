@@ -1,0 +1,36 @@
+---
+import { useSection } from '@/platform/theme';
+import type { HomeWorkSection } from '@/platform/theme';
+import { href, siteLocale } from '@/theme/path';
+import Image from '@/theme/partials/image/render.astro';
+import Link from '@/theme/partials/link/render.astro';
+import Placeholder from '@/theme/partials/placeholder/render.astro';
+
+const { locale: requested, settings } = useSection<HomeWorkSection>(Astro);
+const locale = siteLocale(requested);
+const home = settings;
+const caption = settings.placeholderCaption;
+---
+<section class="bg-white">
+  <div class="mx-auto grid max-w-[980px] items-center gap-12 px-6 py-20 min-[834px]:grid-cols-2">
+    <div>
+      <h2 class="font-display text-[40px] font-semibold leading-[1.1]">{home.workTitle}</h2>
+      <p class="mt-4 text-[12px] text-muted">{home.workMask}</p>
+      <p class="mt-4 text-[21px] font-semibold leading-[1.19]">{home.workName}</p>
+      <dl class="mt-6">
+        {home.workFacts.map((fact) => (
+          <div class="grid grid-cols-[7.5rem_1fr] gap-3 border-b border-hairline py-3 text-[17px]">
+            <dt class="text-muted">{fact.label}</dt>
+            <dd>{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p class="mt-6"><Link class="text-primary" href={href(locale, home.workLink.href)}>{home.workLink.label}</Link></p>
+    </div>
+    {home.workImage.file ? (
+      <Image class="h-auto w-full" asset={home.workImage.file} alt={home.workImage.label} width={home.workImage.file.width} height={home.workImage.file.height} />
+    ) : (
+      <Placeholder label={home.workImage.label} caption={caption} />
+    )}
+  </div>
+</section>

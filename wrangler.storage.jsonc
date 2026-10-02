@@ -1,0 +1,8 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "webunit-storage-cloudflare",
+  "main": "./src/function/infrastructure/workers/storage-entry.ts",
+  "compatibility_date": "2026-08-21",
+  "workers_dev": true,
+  "r2_buckets": [{ "binding": "STORAGE", "remote": true }]
+}

@@ -1,0 +1,18 @@
+---
+import type { SiteManifest } from '@/platform/manifest';
+const { siteManifest } = await import('@/platform/generated/theme/definition');
+const { variant } = Astro.props as { variant: string };
+const manifest = (await siteManifest()).default as SiteManifest;
+const definition = manifest.viewport?.strategy === 'variants'
+  ? manifest.viewport.variants?.find((item) => item.key === variant)
+  : undefined;
+if (!definition) throw new Error(`Unknown viewport variant: ${variant}`);
+const className = `cms-theme-viewport-variant-${variant.replace(/[^a-z0-9_-]/gi, '-')}`;
+const conditions = [
+  definition.when.minWidth === undefined ? undefined : `(min-width: ${definition.when.minWidth}px)`,
+  definition.when.maxWidth === undefined ? undefined : `(max-width: ${definition.when.maxWidth}px)`,
+].filter(Boolean).join(' and ');
+const css = `.${className}{display:none}@media ${conditions || 'all'}{.${className}{display:contents}}`;
+---
+<div class={className} data-theme-viewport-variant={variant}><slot /></div>
+<style is:inline set:html={css}></style>

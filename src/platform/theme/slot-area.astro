@@ -1,0 +1,62 @@
+---
+import type { SlotPreviewRuntime } from '@/platform/theme/render/slot-preview';
+
+const { runtime, slotKey, size = 'md', class: className } = Astro.props as {
+  runtime: SlotPreviewRuntime;
+  slotKey: string;
+  size?: 'sm' | 'md' | 'lg';
+  class?: string;
+};
+const definition = runtime.slots.find((item) => item.key === slotKey);
+if (!definition) throw new Error(`Unknown slot preview area: ${runtime.templateKey} -> ${slotKey}`);
+const selected = runtime.activeSlot === slotKey;
+const available = definition.available;
+---
+<button
+  class:list={['cms-slot-area', `cms-slot-area--${size}`, className, { 'cms-slot-area--selected': selected, 'cms-slot-area--unavailable': !available }]}
+  data-cms-slot={slotKey}
+  data-cms-slot-label={definition.label}
+  data-cms-template={runtime.templateKey}
+  aria-pressed={selected}
+  aria-disabled={!available}
+  disabled={!available}
+  type="button"
+>
+  <span>{definition.label}{!available && ' · Unavailable'}</span>
+</button>
+
+<style>
+  .cms-slot-area {
+    box-sizing: border-box;
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    place-items: center;
+    padding: 0.75rem;
+    border: 1px dashed #a1a1aa;
+    border-radius: 0.375rem;
+    background: #fff;
+    color: #52525b;
+    cursor: pointer;
+  }
+
+  .cms-slot-area--sm { min-height: 3.5rem; }
+  .cms-slot-area--md { min-height: 6rem; }
+  .cms-slot-area--lg { min-height: 10rem; }
+
+  .cms-slot-area > span {
+    font: 600 0.75rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: 0.04em;
+  }
+
+  .cms-slot-area--selected {
+    border-color: #3f3f46;
+    background: #e4e4e7;
+  }
+
+  .cms-slot-area--unavailable {
+    border-style: dotted;
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+</style>

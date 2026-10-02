@@ -1,0 +1,19 @@
+---
+import { serializeJsonForHtml } from '@/platform/theme/render/html-json';
+import type { DocumentInjection, DocumentInjectionPlacement } from '@/platform/theme/render/model';
+
+const { injections, placement } = Astro.props as { injections: readonly DocumentInjection[]; placement: DocumentInjectionPlacement };
+const records = injections.flatMap((injection) =>
+  injection.status === 'active'
+    ? injection.snippets.flatMap((snippet, index) =>
+        snippet.placement === placement
+          ? [{ injection, snippet, index }]
+          : [],
+      )
+    : [],
+);
+const immediate = records.filter((item) => item.injection.requiredConsent.length === 0);
+const pending = records.filter((item) => item.injection.requiredConsent.length > 0);
+---
+{immediate.map((item) => <Fragment set:html={item.snippet.code} />)}
+{pending.map((item) => <script type="application/json" is:inline data-cms-document-injection={`${item.injection.id}:${item.index}`} set:html={serializeJsonForHtml({ id: `${item.injection.id}:${item.index}`, code: item.snippet.code, requiredConsent: item.injection.requiredConsent })} />)}

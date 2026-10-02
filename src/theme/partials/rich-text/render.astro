@@ -1,0 +1,46 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import type { RichTextNode, RichTextRendererMap } from '@/platform/theme';
+import PlatformRichText from '@/platform/theme/rich-text.astro';
+import { richTextTypographyClassName } from '@/theme/partials/text/typography';
+
+type Props = Omit<HTMLAttributes<'div'>, 'value'> & Readonly<{
+  value: readonly RichTextNode[];
+  renderers?: RichTextRendererMap;
+}>;
+
+const { value, renderers = {}, class: className, ...attributes } = Astro.props;
+const richTextClassName = [
+  richTextTypographyClassName,
+  '[&_.rich-text\\_\\_paragraph]:my-4',
+  '[&_.rich-text\\_\\_heading]:mb-4 [&_.rich-text\\_\\_heading]:mt-8 [&_.rich-text\\_\\_heading]:text-ink',
+  '[&_.rich-text\\_\\_blockquote]:my-8 [&_.rich-text\\_\\_blockquote]:border-l-2 [&_.rich-text\\_\\_blockquote]:border-accent [&_.rich-text\\_\\_blockquote]:pl-5',
+  '[&_.rich-text\\_\\_link]:text-accent [&_.rich-text\\_\\_link]:underline [&_.rich-text\\_\\_link]:underline-offset-4',
+  '[&_.rich-text\\_\\_text.is-code]:rounded [&_.rich-text\\_\\_text.is-code]:bg-surface [&_.rich-text\\_\\_text.is-code]:px-1 [&_.rich-text\\_\\_text.is-code]:py-0.5',
+  '[&_.rich-text\\_\\_code-block]:overflow-x-auto [&_.rich-text\\_\\_code-block]:rounded [&_.rich-text\\_\\_code-block]:bg-surface [&_.rich-text\\_\\_code-block]:p-4',
+  '[&_.rich-text\\_\\_divider]:my-8 [&_.rich-text\\_\\_divider]:border-hairline',
+  '[&_.rich-text\\_\\_list]:my-3 [&_.rich-text\\_\\_list]:list-outside [&_.rich-text\\_\\_list]:pl-5',
+  '[&_ul.rich-text\\_\\_list]:list-disc [&_ol.rich-text\\_\\_list]:list-decimal',
+  '[&_.rich-text\\_\\_check-item]:my-3 [&_.rich-text\\_\\_check-item]:flex [&_.rich-text\\_\\_check-item]:flex-col [&_.rich-text\\_\\_check-item]:gap-2',
+  '[&_.rich-text\\_\\_check-item_label]:flex [&_.rich-text\\_\\_check-item_label]:items-start [&_.rich-text\\_\\_check-item_label]:gap-2',
+  '[&_.rich-text\\_\\_toggle-item]:my-4 [&_.rich-text\\_\\_toggle-item]:rounded [&_.rich-text\\_\\_toggle-item]:border [&_.rich-text\\_\\_toggle-item]:border-hairline [&_.rich-text\\_\\_toggle-item]:p-3',
+  '[&_.rich-text\\_\\_image]:my-6 [&_.rich-text\\_\\_image]:h-auto [&_.rich-text\\_\\_image]:max-w-full',
+  '[&_.rich-text\\_\\_video]:my-6 [&_.rich-text\\_\\_video]:w-full [&_.rich-text\\_\\_audio]:my-6 [&_.rich-text\\_\\_audio]:w-full',
+  '[&_.rich-text\\_\\_embed]:my-6 [&_.rich-text\\_\\_embed]:aspect-video [&_.rich-text\\_\\_embed]:w-full',
+  '[&_.rich-text\\_\\_audio-embed]:my-6 [&_.rich-text\\_\\_audio-embed]:h-40 [&_.rich-text\\_\\_audio-embed]:w-full',
+  '[&_.rich-text\\_\\_file]:text-accent [&_.rich-text\\_\\_file]:underline',
+  '[&_.rich-text\\_\\_table-scroll]:my-6 [&_.rich-text\\_\\_table-scroll]:overflow-x-auto',
+  '[&_.rich-text\\_\\_table]:w-full [&_.rich-text\\_\\_table]:border-collapse',
+  '[&_.rich-text\\_\\_table_td]:border [&_.rich-text\\_\\_table_td]:border-hairline [&_.rich-text\\_\\_table_td]:p-3 [&_.rich-text\\_\\_table_td]:align-top',
+  '[&_.rich-text\\_\\_table_th]:border [&_.rich-text\\_\\_table_th]:border-hairline [&_.rich-text\\_\\_table_th]:bg-surface [&_.rich-text\\_\\_table_th]:p-3 [&_.rich-text\\_\\_table_th]:text-left',
+].join(' ');
+---
+<PlatformRichText
+  value={value}
+  renderers={renderers}
+  class:list={[
+    richTextClassName,
+    className,
+  ]}
+  {...attributes}
+/>
